@@ -13,6 +13,7 @@ import {
   useColorScheme,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
@@ -62,132 +63,173 @@ export default function SignupScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <IconSymbol
-            ios_icon_name="person.crop.circle.badge.plus"
-            android_material_icon_name="person_add"
-            size={64}
-            color={colors.primary}
-          />
-          <Text style={[styles.title, { color: isDark ? colors.textDark : colors.text }]}>
-            Create Account
-          </Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Join GlobalTalk and start chatting
-          </Text>
-        </View>
+        <LinearGradient
+          colors={isDark ? [colors.primaryDark, colors.secondaryDark] : [colors.gradientStart, colors.gradientEnd]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.header}
+        >
+          <View style={styles.logoCircle}>
+            <Text style={styles.logoEmoji}>🌟</Text>
+          </View>
+          <Text style={styles.title}>Join GlobalTalk</Text>
+          <Text style={styles.subtitle}>Start chatting across languages 🌍</Text>
+        </LinearGradient>
 
         <View style={styles.form}>
           <View style={styles.inputContainer}>
             <Text style={[styles.label, { color: isDark ? colors.textDark : colors.text }]}>
               Display Name
             </Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: isDark ? colors.backgroundAltDark : colors.backgroundAlt,
-                  color: isDark ? colors.textDark : colors.text,
-                  borderColor: isDark ? colors.borderDark : colors.border,
-                },
-              ]}
-              placeholder="Your name"
-              placeholderTextColor={colors.textSecondary}
-              value={displayName}
-              onChangeText={setDisplayName}
-              autoCapitalize="words"
-            />
+            <View style={[
+              styles.inputWrapper,
+              {
+                backgroundColor: isDark ? colors.backgroundAltDark : colors.backgroundAlt,
+                borderColor: isDark ? colors.borderDark : colors.border,
+              },
+            ]}>
+              <IconSymbol
+                ios_icon_name="person.fill"
+                android_material_icon_name="person"
+                size={20}
+                color={colors.textSecondary}
+              />
+              <TextInput
+                style={[styles.input, { color: isDark ? colors.textDark : colors.text }]}
+                placeholder="Your name"
+                placeholderTextColor={colors.textSecondary}
+                value={displayName}
+                onChangeText={setDisplayName}
+                autoCapitalize="words"
+              />
+            </View>
           </View>
 
           <View style={styles.inputContainer}>
             <Text style={[styles.label, { color: isDark ? colors.textDark : colors.text }]}>
               Username
             </Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: isDark ? colors.backgroundAltDark : colors.backgroundAlt,
-                  color: isDark ? colors.textDark : colors.text,
-                  borderColor: isDark ? colors.borderDark : colors.border,
-                },
-              ]}
-              placeholder="Choose a username"
-              placeholderTextColor={colors.textSecondary}
-              value={username}
-              onChangeText={setUsername}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
+            <View style={[
+              styles.inputWrapper,
+              {
+                backgroundColor: isDark ? colors.backgroundAltDark : colors.backgroundAlt,
+                borderColor: isDark ? colors.borderDark : colors.border,
+              },
+            ]}>
+              <IconSymbol
+                ios_icon_name="at"
+                android_material_icon_name="alternate_email"
+                size={20}
+                color={colors.textSecondary}
+              />
+              <TextInput
+                style={[styles.input, { color: isDark ? colors.textDark : colors.text }]}
+                placeholder="Choose a username"
+                placeholderTextColor={colors.textSecondary}
+                value={username}
+                onChangeText={setUsername}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
           </View>
 
           <View style={styles.inputContainer}>
             <Text style={[styles.label, { color: isDark ? colors.textDark : colors.text }]}>
               Password
             </Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: isDark ? colors.backgroundAltDark : colors.backgroundAlt,
-                  color: isDark ? colors.textDark : colors.text,
-                  borderColor: isDark ? colors.borderDark : colors.border,
-                },
-              ]}
-              placeholder="At least 6 characters"
-              placeholderTextColor={colors.textSecondary}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-            />
+            <View style={[
+              styles.inputWrapper,
+              {
+                backgroundColor: isDark ? colors.backgroundAltDark : colors.backgroundAlt,
+                borderColor: isDark ? colors.borderDark : colors.border,
+              },
+            ]}>
+              <IconSymbol
+                ios_icon_name="lock.fill"
+                android_material_icon_name="lock"
+                size={20}
+                color={colors.textSecondary}
+              />
+              <TextInput
+                style={[styles.input, { color: isDark ? colors.textDark : colors.text }]}
+                placeholder="At least 6 characters"
+                placeholderTextColor={colors.textSecondary}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                autoCapitalize="none"
+              />
+            </View>
           </View>
 
           <View style={styles.inputContainer}>
             <Text style={[styles.label, { color: isDark ? colors.textDark : colors.text }]}>
               Confirm Password
             </Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: isDark ? colors.backgroundAltDark : colors.backgroundAlt,
-                  color: isDark ? colors.textDark : colors.text,
-                  borderColor: isDark ? colors.borderDark : colors.border,
-                },
-              ]}
-              placeholder="Re-enter password"
-              placeholderTextColor={colors.textSecondary}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-              autoCapitalize="none"
-            />
+            <View style={[
+              styles.inputWrapper,
+              {
+                backgroundColor: isDark ? colors.backgroundAltDark : colors.backgroundAlt,
+                borderColor: isDark ? colors.borderDark : colors.border,
+              },
+            ]}>
+              <IconSymbol
+                ios_icon_name="lock.fill"
+                android_material_icon_name="lock"
+                size={20}
+                color={colors.textSecondary}
+              />
+              <TextInput
+                style={[styles.input, { color: isDark ? colors.textDark : colors.text }]}
+                placeholder="Re-enter password"
+                placeholderTextColor={colors.textSecondary}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry
+                autoCapitalize="none"
+              />
+            </View>
           </View>
 
           <View style={[
             styles.languageInfo,
             {
               backgroundColor: isDark ? colors.backgroundAltDark : colors.backgroundAlt,
-              borderColor: isDark ? colors.borderDark : colors.border,
+              borderColor: colors.primary,
             },
           ]}>
-            <Text style={[styles.languageLabel, { color: colors.textSecondary }]}>
-              Preferred Language:
-            </Text>
-            <Text style={[styles.languageValue, { color: isDark ? colors.textDark : colors.text }]}>
-              {getLanguageName(language as string || 'en')}
-            </Text>
+            <IconSymbol
+              ios_icon_name="globe"
+              android_material_icon_name="language"
+              size={24}
+              color={colors.primary}
+            />
+            <View style={styles.languageTextContainer}>
+              <Text style={[styles.languageLabel, { color: colors.textSecondary }]}>
+                Preferred Language
+              </Text>
+              <Text style={[styles.languageValue, { color: isDark ? colors.textDark : colors.text }]}>
+                {getLanguageName(language as string || 'en')}
+              </Text>
+            </View>
           </View>
 
           <TouchableOpacity
-            style={[styles.signupButton, { backgroundColor: colors.primary }]}
+            style={styles.signupButton}
             onPress={handleSignup}
             disabled={loading}
           >
-            <Text style={styles.signupButtonText}>
-              {loading ? 'Creating Account...' : 'Sign Up'}
-            </Text>
+            <LinearGradient
+              colors={[colors.primary, colors.secondary]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.signupButtonGradient}
+            >
+              <Text style={styles.signupButtonText}>
+                {loading ? 'Creating Account...' : 'Sign Up 🎉'}
+              </Text>
+            </LinearGradient>
           </TouchableOpacity>
 
           <View style={styles.loginContainer}>
@@ -212,26 +254,43 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 40,
+    paddingBottom: 40,
   },
   header: {
+    paddingTop: 80,
+    paddingBottom: 40,
+    paddingHorizontal: 20,
     alignItems: 'center',
-    marginBottom: 32,
+  },
+  logoCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.15)',
+  },
+  logoEmoji: {
+    fontSize: 48,
   },
   title: {
     fontSize: 32,
     fontWeight: '700',
-    marginTop: 16,
+    color: '#FFFFFF',
     marginBottom: 8,
+    fontFamily: 'Inter_700Bold',
   },
   subtitle: {
     fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.95)',
     textAlign: 'center',
+    fontFamily: 'Inter_400Regular',
   },
   form: {
-    width: '100%',
+    paddingHorizontal: 20,
+    paddingTop: 32,
   },
   inputContainer: {
     marginBottom: 16,
@@ -240,39 +299,58 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 8,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    borderWidth: 1,
   },
   input: {
-    borderRadius: 10,
+    flex: 1,
     paddingVertical: 14,
-    paddingHorizontal: 16,
+    paddingLeft: 12,
     fontSize: 16,
-    borderWidth: 1,
+    fontFamily: 'Inter_400Regular',
   },
   languageInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     padding: 16,
-    borderRadius: 10,
-    borderWidth: 1,
+    borderRadius: 12,
+    borderWidth: 2,
     marginBottom: 24,
   },
+  languageTextContainer: {
+    flex: 1,
+    marginLeft: 12,
+  },
   languageLabel: {
-    fontSize: 16,
+    fontSize: 14,
+    marginBottom: 2,
+    fontFamily: 'Inter_400Regular',
   },
   languageValue: {
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
   signupButton: {
-    paddingVertical: 16,
     borderRadius: 12,
+    overflow: 'hidden',
+    boxShadow: '0px 4px 16px rgba(37, 99, 235, 0.3)',
+  },
+  signupButtonGradient: {
+    paddingVertical: 16,
     alignItems: 'center',
   },
   signupButtonText: {
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
   loginContainer: {
     flexDirection: 'row',
@@ -281,9 +359,11 @@ const styles = StyleSheet.create({
   },
   loginText: {
     fontSize: 16,
+    fontFamily: 'Inter_400Regular',
   },
   loginLink: {
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
 });

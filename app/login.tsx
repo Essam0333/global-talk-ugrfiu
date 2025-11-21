@@ -12,6 +12,7 @@ import {
   useColorScheme,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
@@ -54,75 +55,94 @@ export default function LoginScreen() {
       style={[styles.container, { backgroundColor: isDark ? colors.backgroundDark : colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <IconSymbol
-            ios_icon_name="bubble.left.and.bubble.right.fill"
-            android_material_icon_name="chat"
-            size={64}
-            color={colors.primary}
-          />
-          <Text style={[styles.title, { color: isDark ? colors.textDark : colors.text }]}>
-            Welcome Back
-          </Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Sign in to continue chatting
-          </Text>
+      <LinearGradient
+        colors={isDark ? [colors.primaryDark, colors.secondaryDark] : [colors.gradientStart, colors.gradientEnd]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        <View style={styles.logoCircle}>
+          <Text style={styles.logoEmoji}>💬</Text>
         </View>
+        <Text style={styles.title}>Welcome Back!</Text>
+        <Text style={styles.subtitle}>Sign in to continue chatting 🌟</Text>
+      </LinearGradient>
 
+      <View style={styles.content}>
         <View style={styles.form}>
           <View style={styles.inputContainer}>
             <Text style={[styles.label, { color: isDark ? colors.textDark : colors.text }]}>
               Username
             </Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: isDark ? colors.backgroundAltDark : colors.backgroundAlt,
-                  color: isDark ? colors.textDark : colors.text,
-                  borderColor: isDark ? colors.borderDark : colors.border,
-                },
-              ]}
-              placeholder="Enter your username"
-              placeholderTextColor={colors.textSecondary}
-              value={username}
-              onChangeText={setUsername}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
+            <View style={[
+              styles.inputWrapper,
+              {
+                backgroundColor: isDark ? colors.backgroundAltDark : colors.backgroundAlt,
+                borderColor: isDark ? colors.borderDark : colors.border,
+              },
+            ]}>
+              <IconSymbol
+                ios_icon_name="person.fill"
+                android_material_icon_name="person"
+                size={20}
+                color={colors.textSecondary}
+              />
+              <TextInput
+                style={[styles.input, { color: isDark ? colors.textDark : colors.text }]}
+                placeholder="Enter your username"
+                placeholderTextColor={colors.textSecondary}
+                value={username}
+                onChangeText={setUsername}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
           </View>
 
           <View style={styles.inputContainer}>
             <Text style={[styles.label, { color: isDark ? colors.textDark : colors.text }]}>
               Password
             </Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: isDark ? colors.backgroundAltDark : colors.backgroundAlt,
-                  color: isDark ? colors.textDark : colors.text,
-                  borderColor: isDark ? colors.borderDark : colors.border,
-                },
-              ]}
-              placeholder="Enter your password"
-              placeholderTextColor={colors.textSecondary}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-            />
+            <View style={[
+              styles.inputWrapper,
+              {
+                backgroundColor: isDark ? colors.backgroundAltDark : colors.backgroundAlt,
+                borderColor: isDark ? colors.borderDark : colors.border,
+              },
+            ]}>
+              <IconSymbol
+                ios_icon_name="lock.fill"
+                android_material_icon_name="lock"
+                size={20}
+                color={colors.textSecondary}
+              />
+              <TextInput
+                style={[styles.input, { color: isDark ? colors.textDark : colors.text }]}
+                placeholder="Enter your password"
+                placeholderTextColor={colors.textSecondary}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                autoCapitalize="none"
+              />
+            </View>
           </View>
 
           <TouchableOpacity
-            style={[styles.loginButton, { backgroundColor: colors.primary }]}
+            style={styles.loginButton}
             onPress={handleLogin}
             disabled={loading}
           >
-            <Text style={styles.loginButtonText}>
-              {loading ? 'Signing in...' : 'Sign In'}
-            </Text>
+            <LinearGradient
+              colors={[colors.primary, colors.secondary]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.loginButtonGradient}
+            >
+              <Text style={styles.loginButtonText}>
+                {loading ? 'Signing in...' : 'Sign In'}
+              </Text>
+            </LinearGradient>
           </TouchableOpacity>
 
           <View style={styles.signupContainer}>
@@ -145,24 +165,42 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 20,
-  },
   header: {
+    paddingTop: 80,
+    paddingBottom: 40,
+    paddingHorizontal: 20,
     alignItems: 'center',
-    marginBottom: 40,
+  },
+  logoCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.15)',
+  },
+  logoEmoji: {
+    fontSize: 48,
   },
   title: {
     fontSize: 32,
     fontWeight: '700',
-    marginTop: 16,
+    color: '#FFFFFF',
     marginBottom: 8,
+    fontFamily: 'Inter_700Bold',
   },
   subtitle: {
     fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.95)',
     textAlign: 'center',
+    fontFamily: 'Inter_400Regular',
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 32,
   },
   form: {
     width: '100%',
@@ -174,24 +212,37 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 8,
+    fontFamily: 'Inter_600SemiBold',
   },
-  input: {
-    borderRadius: 10,
-    paddingVertical: 14,
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
     paddingHorizontal: 16,
-    fontSize: 16,
     borderWidth: 1,
   },
+  input: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingLeft: 12,
+    fontSize: 16,
+    fontFamily: 'Inter_400Regular',
+  },
   loginButton: {
-    paddingVertical: 16,
     borderRadius: 12,
-    alignItems: 'center',
+    overflow: 'hidden',
     marginTop: 8,
+    boxShadow: '0px 4px 16px rgba(37, 99, 235, 0.3)',
+  },
+  loginButtonGradient: {
+    paddingVertical: 16,
+    alignItems: 'center',
   },
   loginButtonText: {
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
   signupContainer: {
     flexDirection: 'row',
@@ -200,9 +251,11 @@ const styles = StyleSheet.create({
   },
   signupText: {
     fontSize: 16,
+    fontFamily: 'Inter_400Regular',
   },
   signupLink: {
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
 });

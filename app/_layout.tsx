@@ -1,8 +1,8 @@
 
 import "react-native-reanimated";
 import React, { useEffect } from "react";
-import { useFonts } from "expo-font";
-import { Stack, router } from "expo-router";
+import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
+import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { SystemBars } from "react-native-edge-to-edge";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -29,7 +29,10 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
   const networkState = useNetworkState();
   const [loaded] = useFonts({
-    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
   });
 
   useEffect(() => {
@@ -58,24 +61,24 @@ export default function RootLayout() {
     ...DefaultTheme,
     dark: false,
     colors: {
-      primary: "rgb(0, 122, 255)",
+      primary: "rgb(37, 99, 235)",
       background: "rgb(255, 255, 255)",
       card: "rgb(255, 255, 255)",
-      text: "rgb(0, 0, 0)",
-      border: "rgb(216, 216, 220)",
-      notification: "rgb(255, 59, 48)",
+      text: "rgb(15, 23, 42)",
+      border: "rgb(226, 232, 240)",
+      notification: "rgb(239, 68, 68)",
     },
   };
 
   const CustomDarkTheme: Theme = {
     ...DarkTheme,
     colors: {
-      primary: "rgb(10, 132, 255)",
-      background: "rgb(0, 0, 0)",
-      card: "rgb(28, 28, 30)",
-      text: "rgb(255, 255, 255)",
-      border: "rgb(44, 44, 46)",
-      notification: "rgb(255, 69, 58)",
+      primary: "rgb(37, 99, 235)",
+      background: "rgb(15, 23, 42)",
+      card: "rgb(30, 41, 59)",
+      text: "rgb(248, 250, 252)",
+      border: "rgb(51, 65, 85)",
+      notification: "rgb(239, 68, 68)",
     },
   };
 
