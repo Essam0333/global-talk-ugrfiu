@@ -1,22 +1,7 @@
 
 import * as React from "react";
-import { createContext, useCallback, useContext } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { Platform } from "react-native";
-
-// Conditionally import ExtensionStorage only on iOS
-let ExtensionStorage: any = null;
-let storage: any = null;
-
-if (Platform.OS === 'ios') {
-  try {
-    const appleTargets = require('@bacons/apple-targets');
-    ExtensionStorage = appleTargets.ExtensionStorage;
-    // Initialize storage with your group ID
-    storage = new ExtensionStorage("group.com.natively.globaltalk");
-  } catch (error) {
-    console.log('ExtensionStorage not available:', error);
-  }
-}
 
 type WidgetContextType = {
   refreshWidget: () => void;
@@ -25,18 +10,19 @@ type WidgetContextType = {
 const WidgetContext = createContext<WidgetContextType | null>(null);
 
 export function WidgetProvider({ children }: { children: React.ReactNode }) {
-  // Update widget state whenever what we want to show changes
-  React.useEffect(() => {
-    if (Platform.OS === 'ios' && ExtensionStorage && storage) {
-      try {
-        // set widget_state to null if we want to reset the widget
-        // storage.set("widget_state", null);
+  const [ExtensionStorage, setExtensionStorage] = useState<any>(null);
 
-        // Refresh widget
-        ExtensionStorage.reloadWidget();
-      } catch (error) {
-        console.log('Error refreshing widget:', error);
-      }
+  useEffect(() => {
+    // Only attempt to load ExtensionStorage on iOS
+    if (Platform.OS === 'ios') {
+      import('@bacons/apple-targets')
+        .then((module) => {
+          setExtensionStorage(module.ExtensionStorage);
+          console.log('ExtensionStorage loaded successfully');
+        })
+        .catch((error) => {
+          console.log('ExtensionStorage not available:', error);
+        });
     }
   }, []);
 
@@ -44,11 +30,12 @@ export function WidgetProvider({ children }: { children: React.ReactNode }) {
     if (Platform.OS === 'ios' && ExtensionStorage) {
       try {
         ExtensionStorage.reloadWidget();
+        console.log('Widget refreshed');
       } catch (error) {
         console.log('Error refreshing widget:', error);
       }
     }
-  }, []);
+  }, [ExtensionStorage]);
 
   return (
     <WidgetContext.Provider value={{ refreshWidget }}>
