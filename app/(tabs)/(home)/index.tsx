@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, useColorScheme } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, useColorScheme, RefreshControl, Alert } from "react-native";
 import { router, Redirect } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,15 +8,20 @@ import { useChat } from "@/contexts/ChatContext";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { User, Group } from "@/types";
+import { User, Group, Conversation } from "@/types";
+import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler';
+import * as Haptics from 'expo-haptics';
 
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const { isAuthenticated, user } = useAuth();
-  const { conversations } = useChat();
+  const { conversations, loadConversations, updateConversation } = useChat();
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [allGroups, setAllGroups] = useState<Group[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'personal' | 'work' | 'groups'>('all');
+  const [showArchived, setShowArchived] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -46,6 +51,108 @@ export default function HomeScreen() {
     } catch (error) {
       console.log('Error loading groups:', error);
     }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    await loadUsers();
+    await loadGroups();
+    await loadConversations();
+    setTimeout(() => setRefreshing(false), 500);
+  };
+
+  const handlePinChat = async (conversation: Conversation) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const pinnedCount = conversations.filter(c => c.isPinned && !c.isArchived).length;
+    
+    if (!conversation.isPinned && pinnedCount >= 5) {
+      Alert.alert('Limit Reached', 'You can only pin up to 5 chats');
+      return;
+    }
+
+    await updateConversation(conversation.id, { isPinned: !conversation.isPinned });
+  };
+
+  const handleArchiveChat = async (conversation: Conversation) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    await updateConversation(conversation.id, { 
+      isArchived: !conversation.isArchived,
+      isPinned: false 
+    });
+  };
+
+  const handleCategoryChange = async (conversation: Conversation, category: 'personal' | 'work' | 'groups') => {
+    await updateConversation(conversation.id, { category });
+  };
+
+  const handleDeleteChat = async (conversation: Conversation) => {
+    Alert.alert(
+      'Delete Chat',
+      'Are you sure you want to delete this conversation?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            const chatId = conversation.groupId || conversation.userId;
+            if (chatId) {
+              await AsyncStorage.removeItem(`messages_${chatId}`);
+              await loadConversations();
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const renderRightActions = (conversation: Conversation) => {
+    return (
+      <View style={styles.swipeActions}>
+        <TouchableOpacity
+          style={[styles.swipeAction, { backgroundColor: colors.warning }]}
+          onPress={() => handlePinChat(conversation)}
+        >
+          <IconSymbol
+            ios_icon_name={conversation.isPinned ? 'pin.slash.fill' : 'pin.fill'}
+            android_material_icon_name={conversation.isPinned ? 'push_pin' : 'push_pin'}
+            size={20}
+            color="#FFFFFF"
+          />
+          <Text style={styles.swipeActionText}>
+            {conversation.isPinned ? 'Unpin' : 'Pin'}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.swipeAction, { backgroundColor: colors.secondary }]}
+          onPress={() => handleArchiveChat(conversation)}
+        >
+          <IconSymbol
+            ios_icon_name={conversation.isArchived ? 'tray.and.arrow.up.fill' : 'archivebox.fill'}
+            android_material_icon_name={conversation.isArchived ? 'unarchive' : 'archive'}
+            size={20}
+            color="#FFFFFF"
+          />
+          <Text style={styles.swipeActionText}>
+            {conversation.isArchived ? 'Unarchive' : 'Archive'}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.swipeAction, { backgroundColor: colors.error }]}
+          onPress={() => handleDeleteChat(conversation)}
+        >
+          <IconSymbol
+            ios_icon_name="trash.fill"
+            android_material_icon_name="delete"
+            size={20}
+            color="#FFFFFF"
+          />
+          <Text style={styles.swipeActionText}>Delete</Text>
+        </TouchableOpacity>
+      </View>
+    );
   };
 
   if (!isAuthenticated) {
@@ -90,185 +197,286 @@ export default function HomeScreen() {
     return message.originalText || 'No messages yet';
   };
 
+  const filteredConversations = conversations
+    .filter(c => showArchived ? c.isArchived : !c.isArchived)
+    .filter(c => {
+      if (selectedCategory === 'all') return true;
+      if (selectedCategory === 'groups') return c.isGroup;
+      return c.category === selectedCategory;
+    })
+    .sort((a, b) => {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      const aTime = a.lastMessage?.timestamp || 0;
+      const bTime = b.lastMessage?.timestamp || 0;
+      return bTime - aTime;
+    });
+
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? colors.backgroundDark : colors.background }]}>
-      <LinearGradient
-        colors={isDark ? [colors.primaryDark, colors.secondaryDark] : [colors.gradientStart, colors.gradientEnd]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.header}
-      >
-        <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.greeting}>Hello! 👋</Text>
-            <Text style={styles.title}>{user?.displayName}</Text>
-          </View>
-          <View style={styles.headerButtons}>
-            <TouchableOpacity
-              style={styles.headerButton}
-              onPress={() => router.push('/group/create')}
-            >
-              <LinearGradient
-                colors={['rgba(255, 255, 255, 0.3)', 'rgba(255, 255, 255, 0.2)']}
-                style={styles.headerButtonGradient}
-              >
-                <IconSymbol
-                  ios_icon_name="person.3.fill"
-                  android_material_icon_name="group_add"
-                  size={22}
-                  color="#FFFFFF"
-                />
-              </LinearGradient>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.headerButton}
-              onPress={() => router.push('/(tabs)/contacts')}
-            >
-              <LinearGradient
-                colors={['rgba(255, 255, 255, 0.3)', 'rgba(255, 255, 255, 0.2)']}
-                style={styles.headerButtonGradient}
-              >
-                <IconSymbol
-                  ios_icon_name="square.and.pencil"
-                  android_material_icon_name="edit"
-                  size={22}
-                  color="#FFFFFF"
-                />
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </LinearGradient>
-
-      <View style={styles.content}>
-        <Text style={[styles.sectionTitle, { color: isDark ? colors.textDark : colors.text }]}>
-          Messages
-        </Text>
-
-        <ScrollView style={styles.chatList} showsVerticalScrollIndicator={false}>
-          {conversations.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyEmoji}>💬</Text>
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                No conversations yet
-              </Text>
-              <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
-                Start a new chat or create a group 🌟
-              </Text>
-              <View style={styles.emptyButtons}>
-                <TouchableOpacity
-                  style={styles.startChatButton}
-                  onPress={() => router.push('/(tabs)/contacts')}
-                >
-                  <LinearGradient
-                    colors={[colors.primary, colors.secondary]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.startChatButtonGradient}
-                  >
-                    <Text style={styles.startChatButtonText}>Start Chat</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.createGroupButton}
-                  onPress={() => router.push('/group/create')}
-                >
-                  <LinearGradient
-                    colors={[colors.secondary, colors.primary]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.startChatButtonGradient}
-                  >
-                    <Text style={styles.startChatButtonText}>Create Group</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <View style={[styles.container, { backgroundColor: isDark ? colors.backgroundDark : colors.background }]}>
+        <LinearGradient
+          colors={isDark ? [colors.primaryDark, colors.secondaryDark] : [colors.gradientStart, colors.gradientEnd]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.header}
+        >
+          <View style={styles.headerContent}>
+            <View>
+              <Text style={styles.greeting}>Hello! 👋</Text>
+              <Text style={styles.title}>{user?.displayName}</Text>
             </View>
-          ) : (
-            conversations.map((conversation, index) => {
-              const isGroup = conversation.isGroup;
-              const chatData = isGroup 
-                ? getGroupById(conversation.groupId!)
-                : getUserById(conversation.userId!);
-              
-              if (!chatData) return null;
-
-              const chatId = isGroup ? conversation.groupId : conversation.userId;
-              const displayName = isGroup ? (chatData as Group).name : (chatData as User).displayName;
-              const memberCount = isGroup ? (chatData as Group).members.length : undefined;
-
-              return (
-                <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.chatItem,
-                    {
-                      backgroundColor: isDark ? colors.cardDark : colors.card,
-                    },
-                  ]}
-                  onPress={() => router.push(`/chat/${chatId}`)}
+            <View style={styles.headerButtons}>
+              <TouchableOpacity
+                style={styles.headerButton}
+                onPress={() => setShowArchived(!showArchived)}
+              >
+                <LinearGradient
+                  colors={['rgba(255, 255, 255, 0.3)', 'rgba(255, 255, 255, 0.2)']}
+                  style={styles.headerButtonGradient}
                 >
-                  <View style={styles.avatarContainer}>
-                    <LinearGradient
-                      colors={isGroup ? [colors.secondary, colors.primary] : [colors.primary, colors.secondary]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={styles.avatar}
-                    >
-                      <Text style={styles.avatarText}>
-                        {displayName.charAt(0).toUpperCase()}
-                      </Text>
-                    </LinearGradient>
-                    {!isGroup && <View style={[styles.onlineIndicator, { backgroundColor: colors.online }]} />}
-                    {isGroup && (
-                      <View style={styles.groupBadge}>
-                        <IconSymbol
-                          ios_icon_name="person.3.fill"
-                          android_material_icon_name="group"
-                          size={12}
-                          color="#FFFFFF"
-                        />
-                      </View>
-                    )}
-                  </View>
-                  
-                  <View style={styles.chatInfo}>
-                    <View style={styles.chatHeader}>
-                      <Text style={[styles.chatName, { color: isDark ? colors.textDark : colors.text }]}>
-                        {displayName}
-                      </Text>
-                      {conversation.lastMessage && (
-                        <Text style={[styles.chatTime, { color: colors.textSecondary }]}>
-                          {formatTime(conversation.lastMessage.timestamp)}
-                        </Text>
-                      )}
-                    </View>
-                    <View style={styles.chatPreview}>
-                      <Text
-                        style={[styles.chatMessage, { color: colors.textSecondary }]}
-                        numberOfLines={1}
-                      >
-                        {conversation.lastMessage ? getMessagePreview(conversation.lastMessage) : (isGroup ? `${memberCount} members` : 'No messages yet')}
-                      </Text>
-                      {conversation.unreadCount > 0 && (
-                        <LinearGradient
-                          colors={[colors.primary, colors.secondary]}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 0 }}
-                          style={styles.unreadBadge}
-                        >
-                          <Text style={styles.unreadText}>{conversation.unreadCount}</Text>
-                        </LinearGradient>
-                      )}
-                    </View>
-                  </View>
+                  <IconSymbol
+                    ios_icon_name={showArchived ? 'tray.and.arrow.up.fill' : 'archivebox.fill'}
+                    android_material_icon_name={showArchived ? 'unarchive' : 'archive'}
+                    size={22}
+                    color="#FFFFFF"
+                  />
+                </LinearGradient>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.headerButton}
+                onPress={() => router.push('/group/create')}
+              >
+                <LinearGradient
+                  colors={['rgba(255, 255, 255, 0.3)', 'rgba(255, 255, 255, 0.2)']}
+                  style={styles.headerButtonGradient}
+                >
+                  <IconSymbol
+                    ios_icon_name="person.3.fill"
+                    android_material_icon_name="group_add"
+                    size={22}
+                    color="#FFFFFF"
+                  />
+                </LinearGradient>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.headerButton}
+                onPress={() => router.push('/(tabs)/contacts')}
+              >
+                <LinearGradient
+                  colors={['rgba(255, 255, 255, 0.3)', 'rgba(255, 255, 255, 0.2)']}
+                  style={styles.headerButtonGradient}
+                >
+                  <IconSymbol
+                    ios_icon_name="square.and.pencil"
+                    android_material_icon_name="edit"
+                    size={22}
+                    color="#FFFFFF"
+                  />
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </LinearGradient>
+
+        <View style={styles.content}>
+          <View style={styles.categoryContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
+              {(['all', 'personal', 'work', 'groups'] as const).map((category) => (
+                <TouchableOpacity
+                  key={category}
+                  style={[
+                    styles.categoryButton,
+                    selectedCategory === category && styles.categoryButtonActive,
+                  ]}
+                  onPress={() => setSelectedCategory(category)}
+                >
+                  <Text
+                    style={[
+                      styles.categoryButtonText,
+                      { color: selectedCategory === category ? '#FFFFFF' : (isDark ? colors.textDark : colors.text) },
+                    ]}
+                  >
+                    {category.charAt(0).toUpperCase() + category.slice(1)}
+                  </Text>
                 </TouchableOpacity>
-              );
-            })
-          )}
-        </ScrollView>
+              ))}
+            </ScrollView>
+          </View>
+
+          <Text style={[styles.sectionTitle, { color: isDark ? colors.textDark : colors.text }]}>
+            {showArchived ? 'Archived Chats' : 'Messages'}
+          </Text>
+
+          <ScrollView 
+            style={styles.chatList} 
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={colors.primary}
+                colors={[colors.primary]}
+              />
+            }
+          >
+            {filteredConversations.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyEmoji}>
+                  {showArchived ? '📦' : '💬'}
+                </Text>
+                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                  {showArchived ? 'No archived chats' : 'No conversations yet'}
+                </Text>
+                <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
+                  {showArchived ? 'Swipe left on a chat to archive it' : 'Start a new chat or create a group 🌟'}
+                </Text>
+                {!showArchived && (
+                  <View style={styles.emptyButtons}>
+                    <TouchableOpacity
+                      style={styles.startChatButton}
+                      onPress={() => router.push('/(tabs)/contacts')}
+                    >
+                      <LinearGradient
+                        colors={[colors.primary, colors.secondary]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.startChatButtonGradient}
+                      >
+                        <Text style={styles.startChatButtonText}>Start Chat</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.createGroupButton}
+                      onPress={() => router.push('/group/create')}
+                    >
+                      <LinearGradient
+                        colors={[colors.secondary, colors.primary]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.startChatButtonGradient}
+                      >
+                        <Text style={styles.startChatButtonText}>Create Group</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            ) : (
+              filteredConversations.map((conversation, index) => {
+                const isGroup = conversation.isGroup;
+                const chatData = isGroup 
+                  ? getGroupById(conversation.groupId!)
+                  : getUserById(conversation.userId!);
+                
+                if (!chatData) return null;
+
+                const chatId = isGroup ? conversation.groupId : conversation.userId;
+                const displayName = isGroup ? (chatData as Group).name : (chatData as User).displayName;
+                const memberCount = isGroup ? (chatData as Group).members.length : undefined;
+                const userStatus = !isGroup ? (chatData as User).status : null;
+                const lastSeen = !isGroup ? (chatData as User).lastSeen : null;
+
+                return (
+                  <Swipeable
+                    key={index}
+                    renderRightActions={() => renderRightActions(conversation)}
+                    overshootRight={false}
+                  >
+                    <TouchableOpacity
+                      style={[
+                        styles.chatItem,
+                        {
+                          backgroundColor: isDark ? colors.cardDark : colors.card,
+                        },
+                        conversation.isPinned && styles.chatItemPinned,
+                      ]}
+                      onPress={() => router.push(`/chat/${chatId}`)}
+                    >
+                      {conversation.isPinned && (
+                        <View style={styles.pinnedBadge}>
+                          <IconSymbol
+                            ios_icon_name="pin.fill"
+                            android_material_icon_name="push_pin"
+                            size={12}
+                            color={colors.warning}
+                          />
+                        </View>
+                      )}
+                      <View style={styles.avatarContainer}>
+                        <LinearGradient
+                          colors={isGroup ? [colors.secondary, colors.primary] : [colors.primary, colors.secondary]}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={styles.avatar}
+                        >
+                          <Text style={styles.avatarText}>
+                            {displayName.charAt(0).toUpperCase()}
+                          </Text>
+                        </LinearGradient>
+                        {!isGroup && userStatus?.type === 'available' && (
+                          <View style={[styles.onlineIndicator, { backgroundColor: colors.online }]} />
+                        )}
+                        {!isGroup && userStatus?.type === 'busy' && (
+                          <View style={[styles.onlineIndicator, { backgroundColor: colors.error }]} />
+                        )}
+                        {!isGroup && userStatus?.type === 'dnd' && (
+                          <View style={[styles.onlineIndicator, { backgroundColor: colors.textSecondary }]} />
+                        )}
+                        {isGroup && (
+                          <View style={styles.groupBadge}>
+                            <IconSymbol
+                              ios_icon_name="person.3.fill"
+                              android_material_icon_name="group"
+                              size={12}
+                              color="#FFFFFF"
+                            />
+                          </View>
+                        )}
+                      </View>
+                      
+                      <View style={styles.chatInfo}>
+                        <View style={styles.chatHeader}>
+                          <Text style={[styles.chatName, { color: isDark ? colors.textDark : colors.text }]}>
+                            {displayName}
+                          </Text>
+                          {conversation.lastMessage && (
+                            <Text style={[styles.chatTime, { color: colors.textSecondary }]}>
+                              {formatTime(conversation.lastMessage.timestamp)}
+                            </Text>
+                          )}
+                        </View>
+                        <View style={styles.chatPreview}>
+                          <Text
+                            style={[styles.chatMessage, { color: colors.textSecondary }]}
+                            numberOfLines={1}
+                          >
+                            {conversation.lastMessage 
+                              ? getMessagePreview(conversation.lastMessage) 
+                              : (isGroup ? `${memberCount} members` : (lastSeen ? `Last seen ${formatTime(lastSeen)}` : 'No messages yet'))
+                            }
+                          </Text>
+                          {conversation.unreadCount > 0 && (
+                            <LinearGradient
+                              colors={[colors.primary, colors.secondary]}
+                              start={{ x: 0, y: 0 }}
+                              end={{ x: 1, y: 0 }}
+                              style={styles.unreadBadge}
+                            >
+                              <Text style={styles.unreadText}>{conversation.unreadCount}</Text>
+                            </LinearGradient>
+                          )}
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  </Swipeable>
+                );
+              })
+            )}
+          </ScrollView>
+        </View>
       </View>
-    </View>
+    </GestureHandlerRootView>
   );
 }
 
@@ -315,6 +523,28 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingTop: 20,
+  },
+  categoryContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  categoryScroll: {
+    flexDirection: 'row',
+  },
+  categoryButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: colors.backgroundAlt,
+    marginRight: 8,
+  },
+  categoryButtonActive: {
+    backgroundColor: colors.primary,
+  },
+  categoryButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
   sectionTitle: {
     fontSize: 20,
@@ -381,6 +611,17 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginBottom: 12,
     boxShadow: '0px 2px 12px rgba(0, 0, 0, 0.06)',
+    position: 'relative',
+  },
+  chatItemPinned: {
+    borderLeftWidth: 3,
+    borderLeftColor: colors.warning,
+  },
+  pinnedBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    zIndex: 1,
   },
   avatarContainer: {
     position: 'relative',
@@ -464,6 +705,24 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
+  },
+  swipeActions: {
+    flexDirection: 'row',
+    marginBottom: 12,
+  },
+  swipeAction: {
+    width: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 16,
+    marginLeft: 4,
+  },
+  swipeActionText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
     fontFamily: 'Inter_600SemiBold',
   },
 });

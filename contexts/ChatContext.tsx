@@ -11,7 +11,9 @@ interface ChatContextType {
   sendMessage: (receiverId?: string, text?: string, groupId?: string) => Promise<void>;
   sendMediaMessage: (receiverId?: string, media?: MediaAttachment, groupId?: string) => Promise<void>;
   loadMessages: (chatId: string) => Promise<void>;
+  loadConversations: () => Promise<void>;
   markAsRead: (chatId: string) => Promise<void>;
+  updateConversation: (conversationId: string, updates: Partial<Conversation>) => Promise<void>;
   isTyping: Record<string, boolean>;
   setTyping: (chatId: string, typing: boolean) => void;
 }
@@ -40,6 +42,24 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.log('Error loading conversations:', error);
+    }
+  };
+
+  const updateConversation = async (conversationId: string, updates: Partial<Conversation>) => {
+    if (!user) return;
+
+    try {
+      const updatedConversations = conversations.map(c =>
+        c.id === conversationId ? { ...c, ...updates } : c
+      );
+
+      setConversations(updatedConversations);
+      await AsyncStorage.setItem(
+        `conversations_${user.id}`,
+        JSON.stringify(updatedConversations)
+      );
+    } catch (error) {
+      console.log('Error updating conversation:', error);
     }
   };
 
@@ -150,6 +170,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           lastMessage: message,
           unreadCount: 0,
           isGroup: !!groupId,
+          isPinned: false,
+          isArchived: false,
+          category: groupId ? 'groups' : 'personal',
         };
         updatedConversations = [newConv, ...conversations];
       }
@@ -220,6 +243,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           lastMessage: message,
           unreadCount: 0,
           isGroup: !!groupId,
+          isPinned: false,
+          isArchived: false,
+          category: groupId ? 'groups' : 'personal',
         };
         updatedConversations = [newConv, ...conversations];
       }
@@ -267,7 +293,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         sendMessage,
         sendMediaMessage,
         loadMessages,
+        loadConversations,
         markAsRead,
+        updateConversation,
         isTyping,
         setTyping,
       }}

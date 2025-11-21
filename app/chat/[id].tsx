@@ -30,7 +30,9 @@ import MediaPicker from '@/components/MediaPicker';
 import MediaMessage from '@/components/MediaMessage';
 import ForwardMessageModal from '@/components/ForwardMessageModal';
 import ChatSearchBar from '@/components/ChatSearchBar';
+import BulkMessageActions from '@/components/BulkMessageActions';
 import { translateText } from '@/utils/translation';
+import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler';
 
 const QUICK_EMOJIS = ['❤️', '👍', '😂', '😮', '😢', '🎉'];
 
@@ -54,6 +56,9 @@ export default function ChatScreen() {
   const [showSearchBar, setShowSearchBar] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [starredMessageIds, setStarredMessageIds] = useState<Set<string>>(new Set());
+  const [bulkSelectMode, setBulkSelectMode] = useState(false);
+  const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
+  const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
 
   const isGroup = (id as string)?.startsWith('group_');
@@ -152,6 +157,19 @@ export default function ChatScreen() {
     setSelectedMessageForActions(message);
   };
 
+  const handleMessagePress = (message: Message) => {
+    if (bulkSelectMode) {
+      const newSelected = new Set(selectedMessages);
+      if (newSelected.has(message.id)) {
+        newSelected.delete(message.id);
+      } else {
+        newSelected.add(message.id);
+      }
+      setSelectedMessages(newSelected);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
+
   const handleCopyMessage = () => {
     if (selectedMessageForActions) {
       Clipboard.setString(selectedMessageForActions.originalText);
@@ -180,6 +198,13 @@ export default function ChatScreen() {
     if (selectedMessageForActions) {
       setMessageToForward(selectedMessageForActions);
       setShowForwardModal(true);
+      setSelectedMessageForActions(null);
+    }
+  };
+
+  const handleReplyToMessage = () => {
+    if (selectedMessageForActions) {
+      setReplyToMessage(selectedMessageForActions);
       setSelectedMessageForActions(null);
     }
   };
@@ -247,6 +272,19 @@ export default function ChatScreen() {
     );
   };
 
+  const handleBulkDelete = async () => {
+    try {
+      const chatMessages = messages[id as string] || [];
+      const updated = chatMessages.filter(m => !selectedMessages.has(m.id));
+      await AsyncStorage.setItem(`messages_${id}`, JSON.stringify(updated));
+      loadMessages(id as string);
+      setSelectedMessages(new Set());
+      setBulkSelectMode(false);
+    } catch (error) {
+      console.log('Error deleting messages:', error);
+    }
+  };
+
   const handleForwardToTargets = async (targetIds: string[], message: Message) => {
     for (const targetId of targetIds) {
       const forwardedMessage = {
@@ -274,6 +312,7 @@ export default function ChatScreen() {
       await sendMessage(id as string, messageText.trim());
     }
     setMessageText('');
+    setReplyToMessage(null);
     
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -304,6 +343,48 @@ export default function ChatScreen() {
     return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   };
 
+  const renderMessageSwipeActions = (message: Message, isMe: boolean) => {
+    if (isMe) {
+      return (
+        <View style={styles.swipeActionsLeft}>
+          <TouchableOpacity
+            style={[styles.swipeAction, { backgroundColor: colors.error }]}
+            onPress={() => {
+              setSelectedMessageForActions(message);
+              handleDeleteMessage();
+            }}
+          >
+            <IconSymbol
+              ios_icon_name="trash"
+              android_material_icon_name="delete"
+              size={20}
+              color="#FFFFFF"
+            />
+          </TouchableOpacity>
+        </View>
+      );
+    } else {
+      return (
+        <View style={styles.swipeActionsRight}>
+          <TouchableOpacity
+            style={[styles.swipeAction, { backgroundColor: colors.primary }]}
+            onPress={() => {
+              setReplyToMessage(message);
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }}
+          >
+            <IconSymbol
+              ios_icon_name="arrowshape.turn.up.left"
+              android_material_icon_name="reply"
+              size={20}
+              color="#FFFFFF"
+            />
+          </TouchableOpacity>
+        </View>
+      );
+    }
+  };
+
   const chatMessages = messages[id as string] || [];
   const filteredMessages = searchQuery
     ? chatMessages.filter(m => 
@@ -329,24 +410,31 @@ export default function ChatScreen() {
       );
     }
 
+    const statusText = otherUser?.status?.type === 'available' ? 'Online' : 
+                      otherUser?.status?.type === 'busy' ? 'Busy' :
+                      otherUser?.status?.type === 'dnd' ? 'Do Not Disturb' :
+                      otherUser?.lastSeen ? `Last seen ${formatTime(otherUser.lastSeen)}` : 'Offline';
+
     return (
       <View style={styles.headerTitle}>
         <View style={styles.headerAvatar}>
           <Text style={styles.headerAvatarText}>
             {otherUser?.displayName.charAt(0).toUpperCase()}
           </Text>
-          <View style={[styles.onlineIndicator, { backgroundColor: colors.online }]} />
+          {otherUser?.status?.type === 'available' && (
+            <View style={[styles.onlineIndicator, { backgroundColor: colors.online }]} />
+          )}
         </View>
         <View>
           <Text style={styles.headerName}>{otherUser?.displayName || 'Chat'}</Text>
-          <Text style={styles.headerStatus}>Online</Text>
+          <Text style={styles.headerStatus}>{statusText}</Text>
         </View>
       </View>
     );
   };
 
   return (
-    <>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <Stack.Screen
         options={{
           headerStyle: {
@@ -369,6 +457,20 @@ export default function ChatScreen() {
           ),
           headerRight: () => (
             <View style={styles.headerButtons}>
+              <TouchableOpacity 
+                onPress={() => {
+                  setBulkSelectMode(!bulkSelectMode);
+                  setSelectedMessages(new Set());
+                }}
+                style={styles.headerButton}
+              >
+                <IconSymbol
+                  ios_icon_name={bulkSelectMode ? 'checkmark.circle.fill' : 'checkmark.circle'}
+                  android_material_icon_name={bulkSelectMode ? 'check_circle' : 'check_circle_outline'}
+                  size={22}
+                  color="#FFFFFF"
+                />
+              </TouchableOpacity>
               <TouchableOpacity 
                 onPress={() => setShowSearchBar(!showSearchBar)}
                 style={styles.headerButton}
@@ -410,6 +512,46 @@ export default function ChatScreen() {
           />
         )}
 
+        {bulkSelectMode && selectedMessages.size > 0 && (
+          <BulkMessageActions
+            selectedMessages={selectedMessages}
+            allMessages={chatMessages}
+            onClearSelection={() => {
+              setSelectedMessages(new Set());
+              setBulkSelectMode(false);
+            }}
+            onDeleteSelected={handleBulkDelete}
+            chatName={isGroup ? group?.name || 'Group' : otherUser?.displayName || 'Chat'}
+          />
+        )}
+
+        {replyToMessage && (
+          <View style={[
+            styles.replyPreview,
+            { backgroundColor: isDark ? colors.cardDark : colors.card },
+          ]}>
+            <View style={styles.replyContent}>
+              <IconSymbol
+                ios_icon_name="arrowshape.turn.up.left"
+                android_material_icon_name="reply"
+                size={16}
+                color={colors.primary}
+              />
+              <Text style={[styles.replyText, { color: isDark ? colors.textDark : colors.text }]} numberOfLines={1}>
+                {replyToMessage.originalText}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={() => setReplyToMessage(null)}>
+              <IconSymbol
+                ios_icon_name="xmark"
+                android_material_icon_name="close"
+                size={20}
+                color={colors.textSecondary}
+              />
+            </TouchableOpacity>
+          </View>
+        )}
+
         <ScrollView
           ref={scrollViewRef}
           style={styles.messagesContainer}
@@ -433,116 +575,145 @@ export default function ChatScreen() {
               const showTranslatedText = showTranslation && message.translatedText && message.translatedText !== message.originalText;
               const reactions = messageReactions[message.id] || {};
               const isStarred = starredMessageIds.has(message.id);
+              const isSelected = selectedMessages.has(message.id);
 
               return (
-                <View
+                <Swipeable
                   key={index}
-                  style={[
-                    styles.messageWrapper,
-                    isMe ? styles.messageWrapperMe : styles.messageWrapperOther,
-                  ]}
+                  renderLeftActions={isMe ? () => renderMessageSwipeActions(message, isMe) : undefined}
+                  renderRightActions={!isMe ? () => renderMessageSwipeActions(message, isMe) : undefined}
+                  overshootLeft={false}
+                  overshootRight={false}
                 >
-                  <TouchableOpacity
-                    onLongPress={() => handleLongPress(message)}
-                    activeOpacity={0.8}
+                  <View
+                    style={[
+                      styles.messageWrapper,
+                      isMe ? styles.messageWrapperMe : styles.messageWrapperOther,
+                    ]}
                   >
-                    <View
-                      style={[
-                        styles.messageBubble,
-                        isMe
-                          ? { backgroundColor: colors.messageSent }
-                          : {
-                              backgroundColor: isDark
-                                ? colors.messageReceivedDark
-                                : colors.messageReceived,
-                            },
-                      ]}
+                    <TouchableOpacity
+                      onLongPress={() => handleLongPress(message)}
+                      onPress={() => handleMessagePress(message)}
+                      activeOpacity={0.8}
                     >
-                      {message.forwardedFrom && (
-                        <View style={styles.forwardedBadge}>
-                          <IconSymbol
-                            ios_icon_name="arrow.forward"
-                            android_material_icon_name="forward"
-                            size={12}
-                            color={isMe ? 'rgba(255,255,255,0.7)' : colors.textSecondary}
-                          />
-                          <Text style={[styles.forwardedText, { color: isMe ? 'rgba(255,255,255,0.7)' : colors.textSecondary }]}>
-                            Forwarded
-                          </Text>
-                        </View>
-                      )}
-                      {isStarred && (
-                        <View style={styles.starBadge}>
-                          <IconSymbol
-                            ios_icon_name="star.fill"
-                            android_material_icon_name="star"
-                            size={12}
-                            color={colors.warning}
-                          />
-                        </View>
-                      )}
-                      {message.mediaType ? (
-                        <MediaMessage message={message} isMe={isMe} />
-                      ) : (
-                        <>
-                          <Text
-                            style={[
-                              styles.messageText,
-                              { color: isMe ? '#FFFFFF' : (isDark ? colors.textDark : colors.text) },
-                            ]}
-                          >
-                            {isMe ? message.originalText : (showTranslatedText ? message.translatedText : message.originalText)}
-                          </Text>
-                          {showTranslatedText && !isMe && (
-                            <View style={[styles.translationContainer, { borderTopColor: isDark ? colors.borderDark : 'rgba(0,0,0,0.1)' }]}>
-                              <Text style={[styles.translationLabel, { color: colors.textSecondary }]}>
-                                Original ({message.originalLanguage?.toUpperCase()}):
-                              </Text>
-                              <Text style={[styles.translationText, { color: isDark ? colors.textDark : colors.text }]}>
-                                {message.originalText}
-                              </Text>
-                            </View>
-                          )}
-                        </>
-                      )}
-                      <Text
+                      <View
                         style={[
-                          styles.messageTime,
-                          { color: isMe ? 'rgba(255,255,255,0.7)' : colors.textSecondary },
+                          styles.messageBubble,
+                          isMe
+                            ? { backgroundColor: colors.messageSent }
+                            : {
+                                backgroundColor: isDark
+                                  ? colors.messageReceivedDark
+                                  : colors.messageReceived,
+                              },
+                          isSelected && styles.messageBubbleSelected,
                         ]}
                       >
-                        {formatTime(message.timestamp)}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-
-                  {Object.keys(reactions).length > 0 && (
-                    <View style={[styles.reactionsContainer, isMe && styles.reactionsContainerMe]}>
-                      {Object.entries(reactions).map(([emoji, count], idx) => (
-                        <EmojiReaction
-                          key={idx}
-                          emoji={emoji}
-                          count={count}
-                          onPress={() => handleReaction(message.id, emoji)}
-                        />
-                      ))}
-                    </View>
-                  )}
-
-                  {selectedMessageForReaction === message.id && (
-                    <View style={[styles.quickReactions, isMe && styles.quickReactionsMe]}>
-                      {QUICK_EMOJIS.map((emoji, idx) => (
-                        <TouchableOpacity
-                          key={idx}
-                          style={styles.quickReactionButton}
-                          onPress={() => handleReaction(message.id, emoji)}
+                        {bulkSelectMode && (
+                          <View style={styles.selectCheckbox}>
+                            <View
+                              style={[
+                                styles.checkbox,
+                                isSelected && { backgroundColor: colors.primary },
+                              ]}
+                            >
+                              {isSelected && (
+                                <IconSymbol
+                                  ios_icon_name="checkmark"
+                                  android_material_icon_name="check"
+                                  size={14}
+                                  color="#FFFFFF"
+                                />
+                              )}
+                            </View>
+                          </View>
+                        )}
+                        {message.forwardedFrom && (
+                          <View style={styles.forwardedBadge}>
+                            <IconSymbol
+                              ios_icon_name="arrow.forward"
+                              android_material_icon_name="forward"
+                              size={12}
+                              color={isMe ? 'rgba(255,255,255,0.7)' : colors.textSecondary}
+                            />
+                            <Text style={[styles.forwardedText, { color: isMe ? 'rgba(255,255,255,0.7)' : colors.textSecondary }]}>
+                              Forwarded
+                            </Text>
+                          </View>
+                        )}
+                        {isStarred && (
+                          <View style={styles.starBadge}>
+                            <IconSymbol
+                              ios_icon_name="star.fill"
+                              android_material_icon_name="star"
+                              size={12}
+                              color={colors.warning}
+                            />
+                          </View>
+                        )}
+                        {message.mediaType ? (
+                          <MediaMessage message={message} isMe={isMe} />
+                        ) : (
+                          <>
+                            <Text
+                              style={[
+                                styles.messageText,
+                                { color: isMe ? '#FFFFFF' : (isDark ? colors.textDark : colors.text) },
+                              ]}
+                            >
+                              {isMe ? message.originalText : (showTranslatedText ? message.translatedText : message.originalText)}
+                            </Text>
+                            {showTranslatedText && !isMe && (
+                              <View style={[styles.translationContainer, { borderTopColor: isDark ? colors.borderDark : 'rgba(0,0,0,0.1)' }]}>
+                                <Text style={[styles.translationLabel, { color: colors.textSecondary }]}>
+                                  Original ({message.originalLanguage?.toUpperCase()}):
+                                </Text>
+                                <Text style={[styles.translationText, { color: isDark ? colors.textDark : colors.text }]}>
+                                  {message.originalText}
+                                </Text>
+                              </View>
+                            )}
+                          </>
+                        )}
+                        <Text
+                          style={[
+                            styles.messageTime,
+                            { color: isMe ? 'rgba(255,255,255,0.7)' : colors.textSecondary },
+                          ]}
                         >
-                          <Text style={styles.quickReactionEmoji}>{emoji}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
-                </View>
+                          {formatTime(message.timestamp)}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+
+                    {Object.keys(reactions).length > 0 && (
+                      <View style={[styles.reactionsContainer, isMe && styles.reactionsContainerMe]}>
+                        {Object.entries(reactions).map(([emoji, count], idx) => (
+                          <EmojiReaction
+                            key={idx}
+                            emoji={emoji}
+                            count={count}
+                            onPress={() => handleReaction(message.id, emoji)}
+                          />
+                        ))}
+                      </View>
+                    )}
+
+                    {selectedMessageForReaction === message.id && (
+                      <View style={[styles.quickReactions, isMe && styles.quickReactionsMe]}>
+                        {QUICK_EMOJIS.map((emoji, idx) => (
+                          <TouchableOpacity
+                            key={idx}
+                            style={styles.quickReactionButton}
+                            onPress={() => handleReaction(message.id, emoji)}
+                          >
+                            <Text style={styles.quickReactionEmoji}>{emoji}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                </Swipeable>
               );
             })
           )}
@@ -649,6 +820,17 @@ export default function ChatScreen() {
               styles.actionsMenu,
               { backgroundColor: isDark ? colors.cardDark : colors.card },
             ]}>
+              <TouchableOpacity style={styles.actionItem} onPress={handleReplyToMessage}>
+                <IconSymbol
+                  ios_icon_name="arrowshape.turn.up.left"
+                  android_material_icon_name="reply"
+                  size={20}
+                  color={isDark ? colors.textDark : colors.text}
+                />
+                <Text style={[styles.actionText, { color: isDark ? colors.textDark : colors.text }]}>
+                  Reply
+                </Text>
+              </TouchableOpacity>
               <TouchableOpacity style={styles.actionItem} onPress={handleCopyMessage}>
                 <IconSymbol
                   ios_icon_name="doc.on.doc"
@@ -730,7 +912,7 @@ export default function ChatScreen() {
           onForward={handleForwardToTargets}
         />
       </KeyboardAvoidingView>
-    </>
+    </GestureHandlerRootView>
   );
 }
 
@@ -790,6 +972,26 @@ const styles = StyleSheet.create({
   headerButton: {
     padding: 8,
   },
+  replyPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  replyContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  replyText: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+  },
   messagesContainer: {
     flex: 1,
   },
@@ -832,6 +1034,26 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.08)',
     position: 'relative',
+  },
+  messageBubbleSelected: {
+    borderWidth: 2,
+    borderColor: colors.primary,
+  },
+  selectCheckbox: {
+    position: 'absolute',
+    top: -8,
+    left: -8,
+    zIndex: 1,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    backgroundColor: colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   forwardedBadge: {
     flexDirection: 'row',
@@ -906,6 +1128,25 @@ const styles = StyleSheet.create({
   },
   quickReactionEmoji: {
     fontSize: 24,
+  },
+  swipeActionsLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    marginRight: 8,
+  },
+  swipeActionsRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    marginLeft: 8,
+  },
+  swipeAction: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   inputContainer: {
     flexDirection: 'row',
