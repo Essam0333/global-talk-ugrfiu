@@ -6,7 +6,7 @@ import { useEffect } from 'react';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ChatProvider } from '@/contexts/ChatContext';
 import { SettingsProvider } from '@/contexts/SettingsContext';
-import { WidgetContext } from '@/contexts/WidgetContext';
+import { WidgetProvider } from '@/contexts/WidgetContext';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -29,7 +29,7 @@ export default function RootLayout() {
   }
 
   return (
-    <WidgetContext>
+    <WidgetProvider>
       <AuthProvider>
         <ChatProvider>
           <SettingsProvider>
@@ -50,6 +50,6 @@ export default function RootLayout() {
           </SettingsProvider>
         </ChatProvider>
       </AuthProvider>
-    </WidgetContext>
+    </WidgetProvider>
   );
 }
