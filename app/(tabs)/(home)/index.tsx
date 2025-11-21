@@ -8,7 +8,7 @@ import { useChat } from "@/contexts/ChatContext";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { User } from "@/types";
+import { User, Group } from "@/types";
 
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
@@ -16,10 +16,12 @@ export default function HomeScreen() {
   const { isAuthenticated, user } = useAuth();
   const { conversations } = useChat();
   const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [allGroups, setAllGroups] = useState<Group[]>([]);
 
   useEffect(() => {
     if (isAuthenticated) {
       loadUsers();
+      loadGroups();
     }
   }, [isAuthenticated]);
 
@@ -35,12 +37,27 @@ export default function HomeScreen() {
     }
   };
 
+  const loadGroups = async () => {
+    try {
+      const groupsJson = await AsyncStorage.getItem('groups');
+      if (groupsJson) {
+        setAllGroups(JSON.parse(groupsJson));
+      }
+    } catch (error) {
+      console.log('Error loading groups:', error);
+    }
+  };
+
   if (!isAuthenticated) {
     return <Redirect href="/welcome" />;
   }
 
   const getUserById = (userId: string) => {
     return allUsers.find(u => u.id === userId);
+  };
+
+  const getGroupById = (groupId: string) => {
+    return allGroups.find(g => g.id === groupId);
   };
 
   const formatTime = (timestamp: number) => {
@@ -58,6 +75,21 @@ export default function HomeScreen() {
     }
   };
 
+  const getMessagePreview = (message: any) => {
+    if (message.mediaType) {
+      const mediaIcons: Record<string, string> = {
+        image: '📷 Photo',
+        video: '🎥 Video',
+        document: '📄 Document',
+        voice: '🎤 Voice message',
+        location: '📍 Location',
+        contact: '👤 Contact',
+      };
+      return mediaIcons[message.mediaType] || 'Media';
+    }
+    return message.originalText || 'No messages yet';
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: isDark ? colors.backgroundDark : colors.background }]}>
       <LinearGradient
@@ -71,22 +103,40 @@ export default function HomeScreen() {
             <Text style={styles.greeting}>Hello! 👋</Text>
             <Text style={styles.title}>{user?.displayName}</Text>
           </View>
-          <TouchableOpacity
-            style={styles.newChatButton}
-            onPress={() => router.push('/(tabs)/contacts')}
-          >
-            <LinearGradient
-              colors={['rgba(255, 255, 255, 0.3)', 'rgba(255, 255, 255, 0.2)']}
-              style={styles.newChatButtonGradient}
+          <View style={styles.headerButtons}>
+            <TouchableOpacity
+              style={styles.headerButton}
+              onPress={() => router.push('/group/create')}
             >
-              <IconSymbol
-                ios_icon_name="square.and.pencil"
-                android_material_icon_name="edit"
-                size={24}
-                color="#FFFFFF"
-              />
-            </LinearGradient>
-          </TouchableOpacity>
+              <LinearGradient
+                colors={['rgba(255, 255, 255, 0.3)', 'rgba(255, 255, 255, 0.2)']}
+                style={styles.headerButtonGradient}
+              >
+                <IconSymbol
+                  ios_icon_name="person.3.fill"
+                  android_material_icon_name="group_add"
+                  size={22}
+                  color="#FFFFFF"
+                />
+              </LinearGradient>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.headerButton}
+              onPress={() => router.push('/(tabs)/contacts')}
+            >
+              <LinearGradient
+                colors={['rgba(255, 255, 255, 0.3)', 'rgba(255, 255, 255, 0.2)']}
+                style={styles.headerButtonGradient}
+              >
+                <IconSymbol
+                  ios_icon_name="square.and.pencil"
+                  android_material_icon_name="edit"
+                  size={22}
+                  color="#FFFFFF"
+                />
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         </View>
       </LinearGradient>
 
@@ -103,32 +153,49 @@ export default function HomeScreen() {
                 No conversations yet
               </Text>
               <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
-                Start a new chat from your contacts 🌟
+                Start a new chat or create a group 🌟
               </Text>
-              <TouchableOpacity
-                style={styles.startChatButton}
-                onPress={() => router.push('/(tabs)/contacts')}
-              >
-                <LinearGradient
-                  colors={[colors.primary, colors.secondary]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.startChatButtonGradient}
+              <View style={styles.emptyButtons}>
+                <TouchableOpacity
+                  style={styles.startChatButton}
+                  onPress={() => router.push('/(tabs)/contacts')}
                 >
-                  <Text style={styles.startChatButtonText}>Start Chatting</Text>
-                  <IconSymbol
-                    ios_icon_name="arrow.right"
-                    android_material_icon_name="arrow_forward"
-                    size={18}
-                    color="#FFFFFF"
-                  />
-                </LinearGradient>
-              </TouchableOpacity>
+                  <LinearGradient
+                    colors={[colors.primary, colors.secondary]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.startChatButtonGradient}
+                  >
+                    <Text style={styles.startChatButtonText}>Start Chat</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.createGroupButton}
+                  onPress={() => router.push('/group/create')}
+                >
+                  <LinearGradient
+                    colors={[colors.secondary, colors.primary]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.startChatButtonGradient}
+                  >
+                    <Text style={styles.startChatButtonText}>Create Group</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
             </View>
           ) : (
             conversations.map((conversation, index) => {
-              const otherUser = getUserById(conversation.userId);
-              if (!otherUser) return null;
+              const isGroup = conversation.isGroup;
+              const chatData = isGroup 
+                ? getGroupById(conversation.groupId!)
+                : getUserById(conversation.userId!);
+              
+              if (!chatData) return null;
+
+              const chatId = isGroup ? conversation.groupId : conversation.userId;
+              const displayName = isGroup ? (chatData as Group).name : (chatData as User).displayName;
+              const memberCount = isGroup ? (chatData as Group).members.length : undefined;
 
               return (
                 <TouchableOpacity
@@ -139,26 +206,36 @@ export default function HomeScreen() {
                       backgroundColor: isDark ? colors.cardDark : colors.card,
                     },
                   ]}
-                  onPress={() => router.push(`/chat/${conversation.userId}`)}
+                  onPress={() => router.push(`/chat/${chatId}`)}
                 >
                   <View style={styles.avatarContainer}>
                     <LinearGradient
-                      colors={[colors.primary, colors.secondary]}
+                      colors={isGroup ? [colors.secondary, colors.primary] : [colors.primary, colors.secondary]}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
                       style={styles.avatar}
                     >
                       <Text style={styles.avatarText}>
-                        {otherUser.displayName.charAt(0).toUpperCase()}
+                        {displayName.charAt(0).toUpperCase()}
                       </Text>
                     </LinearGradient>
-                    <View style={[styles.onlineIndicator, { backgroundColor: colors.online }]} />
+                    {!isGroup && <View style={[styles.onlineIndicator, { backgroundColor: colors.online }]} />}
+                    {isGroup && (
+                      <View style={styles.groupBadge}>
+                        <IconSymbol
+                          ios_icon_name="person.3.fill"
+                          android_material_icon_name="group"
+                          size={12}
+                          color="#FFFFFF"
+                        />
+                      </View>
+                    )}
                   </View>
                   
                   <View style={styles.chatInfo}>
                     <View style={styles.chatHeader}>
                       <Text style={[styles.chatName, { color: isDark ? colors.textDark : colors.text }]}>
-                        {otherUser.displayName}
+                        {displayName}
                       </Text>
                       {conversation.lastMessage && (
                         <Text style={[styles.chatTime, { color: colors.textSecondary }]}>
@@ -171,7 +248,7 @@ export default function HomeScreen() {
                         style={[styles.chatMessage, { color: colors.textSecondary }]}
                         numberOfLines={1}
                       >
-                        {conversation.lastMessage?.originalText || 'No messages yet'}
+                        {conversation.lastMessage ? getMessagePreview(conversation.lastMessage) : (isGroup ? `${memberCount} members` : 'No messages yet')}
                       </Text>
                       {conversation.unreadCount > 0 && (
                         <LinearGradient
@@ -221,13 +298,17 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontFamily: 'Inter_700Bold',
   },
-  newChatButton: {
-    borderRadius: 24,
+  headerButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  headerButton: {
+    borderRadius: 20,
     overflow: 'hidden',
   },
-  newChatButtonGradient: {
-    width: 48,
-    height: 48,
+  headerButtonGradient: {
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -268,10 +349,19 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     fontFamily: 'Inter_400Regular',
   },
+  emptyButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
   startChatButton: {
     borderRadius: 24,
     overflow: 'hidden',
     boxShadow: '0px 4px 16px rgba(37, 99, 235, 0.3)',
+  },
+  createGroupButton: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    boxShadow: '0px 4px 16px rgba(13, 148, 136, 0.3)',
   },
   startChatButtonGradient: {
     flexDirection: 'row',
@@ -283,7 +373,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
-    marginRight: 8,
     fontFamily: 'Inter_600SemiBold',
   },
   chatItem: {
@@ -317,6 +406,19 @@ const styles = StyleSheet.create({
     width: 14,
     height: 14,
     borderRadius: 7,
+    borderWidth: 2,
+    borderColor: colors.card,
+  },
+  groupBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: colors.secondary,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 2,
     borderColor: colors.card,
   },

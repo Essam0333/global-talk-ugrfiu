@@ -9,6 +9,7 @@ import {
   TextInput,
   useColorScheme,
   Animated,
+  Image,
 } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -110,11 +111,10 @@ export default function WelcomeScreen() {
         
         <View style={styles.logoContainer}>
           <View style={styles.logoCircle}>
-            <IconSymbol
-              ios_icon_name="globe"
-              android_material_icon_name="language"
-              size={48}
-              color="#FFFFFF"
+            <Image
+              source={require('@/assets/images/2ad18e60-a001-4839-ab8d-c2cf85815ff0.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
             />
           </View>
           <Text style={styles.title}>GlobalTalk</Text>
@@ -242,11 +242,16 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
     boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.15)',
+    padding: 8,
+  },
+  logoImage: {
+    width: 80,
+    height: 80,
   },
   title: {
     fontSize: 32,

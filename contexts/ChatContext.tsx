@@ -1,18 +1,19 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Message, Conversation, User } from '@/types';
+import { Message, Conversation, User, Group, MediaAttachment } from '@/types';
 import { useAuth } from './AuthContext';
 import { translateText, detectLanguage } from '@/utils/translation';
 
 interface ChatContextType {
   conversations: Conversation[];
   messages: Record<string, Message[]>;
-  sendMessage: (receiverId: string, text: string) => Promise<void>;
-  loadMessages: (userId: string) => Promise<void>;
-  markAsRead: (userId: string) => Promise<void>;
+  sendMessage: (receiverId?: string, text?: string, groupId?: string) => Promise<void>;
+  sendMediaMessage: (receiverId?: string, media?: MediaAttachment, groupId?: string) => Promise<void>;
+  loadMessages: (chatId: string) => Promise<void>;
+  markAsRead: (chatId: string) => Promise<void>;
   isTyping: Record<string, boolean>;
-  setTyping: (userId: string, typing: boolean) => void;
+  setTyping: (chatId: string, typing: boolean) => void;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -42,21 +43,21 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const loadMessages = async (userId: string) => {
+  const loadMessages = async (chatId: string) => {
     if (!user) return;
 
     try {
-      const messagesJson = await AsyncStorage.getItem(`messages_${user.id}_${userId}`);
+      const messagesJson = await AsyncStorage.getItem(`messages_${chatId}`);
       if (messagesJson) {
         const loadedMessages = JSON.parse(messagesJson);
         setMessages(prev => ({
           ...prev,
-          [userId]: loadedMessages,
+          [chatId]: loadedMessages,
         }));
       } else {
         setMessages(prev => ({
           ...prev,
-          [userId]: [],
+          [chatId]: [],
         }));
       }
     } catch (error) {
@@ -64,63 +65,80 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const sendMessage = async (receiverId: string, text: string) => {
-    if (!user) return;
+  const sendMessage = async (receiverId?: string, text?: string, groupId?: string) => {
+    if (!user || !text) return;
 
     try {
-      // Detect language of the message
       const detectedLanguage = await detectLanguage(text);
+      const chatId = groupId || receiverId;
+      if (!chatId) return;
 
-      // Get receiver's preferred language
-      const usersJson = await AsyncStorage.getItem('users');
-      const users = usersJson ? JSON.parse(usersJson) : [];
-      const receiver = users.find((u: User) => u.id === receiverId);
+      let translatedTexts: Record<string, string> = {};
 
-      let translatedText = text;
-      if (receiver && receiver.preferredLanguage !== detectedLanguage) {
-        translatedText = await translateText(text, detectedLanguage, receiver.preferredLanguage);
+      if (groupId) {
+        const groupsJson = await AsyncStorage.getItem('groups');
+        const groups = groupsJson ? JSON.parse(groupsJson) : [];
+        const group = groups.find((g: Group) => g.id === groupId);
+
+        if (group) {
+          for (const member of group.members) {
+            if (member.preferredLanguage !== detectedLanguage) {
+              translatedTexts[member.userId] = await translateText(
+                text,
+                detectedLanguage,
+                member.preferredLanguage
+              );
+            }
+          }
+        }
+      } else if (receiverId) {
+        const usersJson = await AsyncStorage.getItem('users');
+        const users = usersJson ? JSON.parse(usersJson) : [];
+        const receiver = users.find((u: User) => u.id === receiverId);
+
+        if (receiver && receiver.preferredLanguage !== detectedLanguage) {
+          translatedTexts[receiverId] = await translateText(
+            text,
+            detectedLanguage,
+            receiver.preferredLanguage
+          );
+        }
       }
 
       const message: Message = {
         id: `msg_${Date.now()}`,
         senderId: user.id,
-        receiverId,
+        receiverId: groupId ? undefined : receiverId,
+        groupId,
         originalText: text,
         originalLanguage: detectedLanguage,
-        translatedText,
-        translatedLanguage: receiver?.preferredLanguage || detectedLanguage,
+        translatedText: translatedTexts[receiverId || ''] || text,
+        translatedLanguage: user.preferredLanguage,
         timestamp: Date.now(),
         status: 'sent',
       };
 
-      // Update messages
-      const userMessages = messages[receiverId] || [];
-      const updatedMessages = [...userMessages, message];
+      const chatMessages = messages[chatId] || [];
+      const updatedMessages = [...chatMessages, message];
       
       setMessages(prev => ({
         ...prev,
-        [receiverId]: updatedMessages,
+        [chatId]: updatedMessages,
       }));
 
-      // Save messages
       await AsyncStorage.setItem(
-        `messages_${user.id}_${receiverId}`,
+        `messages_${chatId}`,
         JSON.stringify(updatedMessages)
       );
 
-      // Also save for receiver
-      await AsyncStorage.setItem(
-        `messages_${receiverId}_${user.id}`,
-        JSON.stringify(updatedMessages)
+      const existingConv = conversations.find(c => 
+        (c.userId === receiverId) || (c.groupId === groupId)
       );
-
-      // Update conversation
-      const existingConv = conversations.find(c => c.userId === receiverId);
       let updatedConversations;
 
       if (existingConv) {
         updatedConversations = conversations.map(c =>
-          c.userId === receiverId
+          (c.userId === receiverId || c.groupId === groupId)
             ? { ...c, lastMessage: message }
             : c
         );
@@ -128,8 +146,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         const newConv: Conversation = {
           id: `conv_${Date.now()}`,
           userId: receiverId,
+          groupId,
           lastMessage: message,
           unreadCount: 0,
+          isGroup: !!groupId,
         };
         updatedConversations = [newConv, ...conversations];
       }
@@ -139,45 +159,87 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         `conversations_${user.id}`,
         JSON.stringify(updatedConversations)
       );
-
-      // Update receiver's conversation
-      const receiverConvsJson = await AsyncStorage.getItem(`conversations_${receiverId}`);
-      const receiverConvs = receiverConvsJson ? JSON.parse(receiverConvsJson) : [];
-      const receiverConv = receiverConvs.find((c: Conversation) => c.userId === user.id);
-
-      if (receiverConv) {
-        const updatedReceiverConvs = receiverConvs.map((c: Conversation) =>
-          c.userId === user.id
-            ? { ...c, lastMessage: message, unreadCount: c.unreadCount + 1 }
-            : c
-        );
-        await AsyncStorage.setItem(
-          `conversations_${receiverId}`,
-          JSON.stringify(updatedReceiverConvs)
-        );
-      } else {
-        const newReceiverConv: Conversation = {
-          id: `conv_${Date.now()}`,
-          userId: user.id,
-          lastMessage: message,
-          unreadCount: 1,
-        };
-        await AsyncStorage.setItem(
-          `conversations_${receiverId}`,
-          JSON.stringify([newReceiverConv, ...receiverConvs])
-        );
-      }
     } catch (error) {
       console.log('Error sending message:', error);
     }
   };
 
-  const markAsRead = async (userId: string) => {
+  const sendMediaMessage = async (receiverId?: string, media?: MediaAttachment, groupId?: string) => {
+    if (!user || !media) return;
+
+    try {
+      const chatId = groupId || receiverId;
+      if (!chatId) return;
+
+      const message: Message = {
+        id: `msg_${Date.now()}`,
+        senderId: user.id,
+        receiverId: groupId ? undefined : receiverId,
+        groupId,
+        originalText: '',
+        originalLanguage: user.preferredLanguage,
+        timestamp: Date.now(),
+        status: 'sent',
+        mediaType: media.type,
+        mediaUrl: media.uri,
+        mediaThumbnail: media.thumbnail,
+        mediaSize: media.size,
+        mediaName: media.name,
+        mediaDuration: media.duration,
+      };
+
+      const chatMessages = messages[chatId] || [];
+      const updatedMessages = [...chatMessages, message];
+      
+      setMessages(prev => ({
+        ...prev,
+        [chatId]: updatedMessages,
+      }));
+
+      await AsyncStorage.setItem(
+        `messages_${chatId}`,
+        JSON.stringify(updatedMessages)
+      );
+
+      const existingConv = conversations.find(c => 
+        (c.userId === receiverId) || (c.groupId === groupId)
+      );
+      let updatedConversations;
+
+      if (existingConv) {
+        updatedConversations = conversations.map(c =>
+          (c.userId === receiverId || c.groupId === groupId)
+            ? { ...c, lastMessage: message }
+            : c
+        );
+      } else {
+        const newConv: Conversation = {
+          id: `conv_${Date.now()}`,
+          userId: receiverId,
+          groupId,
+          lastMessage: message,
+          unreadCount: 0,
+          isGroup: !!groupId,
+        };
+        updatedConversations = [newConv, ...conversations];
+      }
+
+      setConversations(updatedConversations);
+      await AsyncStorage.setItem(
+        `conversations_${user.id}`,
+        JSON.stringify(updatedConversations)
+      );
+    } catch (error) {
+      console.log('Error sending media message:', error);
+    }
+  };
+
+  const markAsRead = async (chatId: string) => {
     if (!user) return;
 
     try {
       const updatedConversations = conversations.map(c =>
-        c.userId === userId ? { ...c, unreadCount: 0 } : c
+        (c.userId === chatId || c.groupId === chatId) ? { ...c, unreadCount: 0 } : c
       );
 
       setConversations(updatedConversations);
@@ -190,10 +252,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const setTyping = (userId: string, typing: boolean) => {
+  const setTyping = (chatId: string, typing: boolean) => {
     setIsTypingState(prev => ({
       ...prev,
-      [userId]: typing,
+      [chatId]: typing,
     }));
   };
 
@@ -203,6 +265,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         conversations,
         messages,
         sendMessage,
+        sendMediaMessage,
         loadMessages,
         markAsRead,
         isTyping,

@@ -19,10 +19,12 @@ import { useChat } from '@/contexts/ChatContext';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { User } from '@/types';
+import { User, Group, MediaAttachment } from '@/types';
 import EmojiPicker from '@/components/EmojiPicker';
 import TypingIndicator from '@/components/TypingIndicator';
 import EmojiReaction from '@/components/EmojiReaction';
+import MediaPicker from '@/components/MediaPicker';
+import MediaMessage from '@/components/MediaMessage';
 
 const QUICK_EMOJIS = ['❤️', '😂', '👍', '😮', '😢', '🎉'];
 
@@ -31,20 +33,28 @@ export default function ChatScreen() {
   const isDark = colorScheme === 'dark';
   const { id } = useLocalSearchParams();
   const { user } = useAuth();
-  const { messages, sendMessage, loadMessages, markAsRead, isTyping } = useChat();
+  const { messages, sendMessage, sendMediaMessage, loadMessages, markAsRead, isTyping } = useChat();
   const [messageText, setMessageText] = useState('');
   const [otherUser, setOtherUser] = useState<User | null>(null);
+  const [group, setGroup] = useState<Group | null>(null);
   const [showTranslation, setShowTranslation] = useState(true);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showMediaPicker, setShowMediaPicker] = useState(false);
   const [selectedMessageForReaction, setSelectedMessageForReaction] = useState<string | null>(null);
   const [messageReactions, setMessageReactions] = useState<Record<string, Record<string, number>>>({});
   const scrollViewRef = useRef<ScrollView>(null);
+
+  const isGroup = (id as string)?.startsWith('group_');
 
   useEffect(() => {
     if (id) {
       loadMessages(id as string);
       markAsRead(id as string);
-      loadOtherUser();
+      if (isGroup) {
+        loadGroup();
+      } else {
+        loadOtherUser();
+      }
       loadReactions();
     }
   }, [id]);
@@ -59,6 +69,19 @@ export default function ChatScreen() {
       }
     } catch (error) {
       console.log('Error loading user:', error);
+    }
+  };
+
+  const loadGroup = async () => {
+    try {
+      const groupsJson = await AsyncStorage.getItem('groups');
+      if (groupsJson) {
+        const groups = JSON.parse(groupsJson);
+        const foundGroup = groups.find((g: Group) => g.id === id);
+        setGroup(foundGroup);
+      }
+    } catch (error) {
+      console.log('Error loading group:', error);
     }
   };
 
@@ -98,9 +121,27 @@ export default function ChatScreen() {
   const handleSend = async () => {
     if (!messageText.trim() || !id) return;
 
-    await sendMessage(id as string, messageText.trim());
+    if (isGroup) {
+      await sendMessage(undefined, messageText.trim(), id as string);
+    } else {
+      await sendMessage(id as string, messageText.trim());
+    }
     setMessageText('');
     
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  };
+
+  const handleMediaSelected = async (media: MediaAttachment) => {
+    if (!id) return;
+
+    if (isGroup) {
+      await sendMediaMessage(undefined, media, id as string);
+    } else {
+      await sendMediaMessage(id as string, media);
+    }
+
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
     }, 100);
@@ -118,6 +159,39 @@ export default function ChatScreen() {
 
   const chatMessages = messages[id as string] || [];
 
+  const getHeaderTitle = () => {
+    if (isGroup && group) {
+      return (
+        <View style={styles.headerTitle}>
+          <View style={styles.headerAvatar}>
+            <Text style={styles.headerAvatarText}>
+              {group.name.charAt(0).toUpperCase()}
+            </Text>
+          </View>
+          <View>
+            <Text style={styles.headerName}>{group.name}</Text>
+            <Text style={styles.headerStatus}>{group.members.length} members</Text>
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.headerTitle}>
+        <View style={styles.headerAvatar}>
+          <Text style={styles.headerAvatarText}>
+            {otherUser?.displayName.charAt(0).toUpperCase()}
+          </Text>
+          <View style={[styles.onlineIndicator, { backgroundColor: colors.online }]} />
+        </View>
+        <View>
+          <Text style={styles.headerName}>{otherUser?.displayName || 'Chat'}</Text>
+          <Text style={styles.headerStatus}>Online</Text>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <>
       <Stack.Screen
@@ -126,20 +200,7 @@ export default function ChatScreen() {
             backgroundColor: isDark ? colors.primaryDark : colors.primary,
           },
           headerTintColor: '#FFFFFF',
-          headerTitle: () => (
-            <View style={styles.headerTitle}>
-              <View style={styles.headerAvatar}>
-                <Text style={styles.headerAvatarText}>
-                  {otherUser?.displayName.charAt(0).toUpperCase()}
-                </Text>
-                <View style={[styles.onlineIndicator, { backgroundColor: colors.online }]} />
-              </View>
-              <View>
-                <Text style={styles.headerName}>{otherUser?.displayName || 'Chat'}</Text>
-                <Text style={styles.headerStatus}>Online</Text>
-              </View>
-            </View>
-          ),
+          headerTitle: () => getHeaderTitle(),
           headerRight: () => (
             <TouchableOpacity 
               onPress={() => setShowTranslation(!showTranslation)}
@@ -207,23 +268,29 @@ export default function ChatScreen() {
                             },
                       ]}
                     >
-                      <Text
-                        style={[
-                          styles.messageText,
-                          { color: isMe ? '#FFFFFF' : (isDark ? colors.textDark : colors.text) },
-                        ]}
-                      >
-                        {isMe ? message.originalText : (showTranslatedText ? message.translatedText : message.originalText)}
-                      </Text>
-                      {showTranslatedText && !isMe && (
-                        <View style={[styles.translationContainer, { borderTopColor: isDark ? colors.borderDark : 'rgba(0,0,0,0.1)' }]}>
-                          <Text style={[styles.translationLabel, { color: colors.textSecondary }]}>
-                            Original ({message.originalLanguage?.toUpperCase()}):
+                      {message.mediaType ? (
+                        <MediaMessage message={message} isMe={isMe} />
+                      ) : (
+                        <>
+                          <Text
+                            style={[
+                              styles.messageText,
+                              { color: isMe ? '#FFFFFF' : (isDark ? colors.textDark : colors.text) },
+                            ]}
+                          >
+                            {isMe ? message.originalText : (showTranslatedText ? message.translatedText : message.originalText)}
                           </Text>
-                          <Text style={[styles.translationText, { color: isDark ? colors.textDark : colors.text }]}>
-                            {message.originalText}
-                          </Text>
-                        </View>
+                          {showTranslatedText && !isMe && (
+                            <View style={[styles.translationContainer, { borderTopColor: isDark ? colors.borderDark : 'rgba(0,0,0,0.1)' }]}>
+                              <Text style={[styles.translationLabel, { color: colors.textSecondary }]}>
+                                Original ({message.originalLanguage?.toUpperCase()}):
+                              </Text>
+                              <Text style={[styles.translationText, { color: isDark ? colors.textDark : colors.text }]}>
+                                {message.originalText}
+                              </Text>
+                            </View>
+                          )}
+                        </>
                       )}
                       <Text
                         style={[
@@ -276,6 +343,18 @@ export default function ChatScreen() {
             borderTopColor: isDark ? colors.borderDark : colors.border,
           },
         ]}>
+          <TouchableOpacity
+            style={styles.attachButton}
+            onPress={() => setShowMediaPicker(true)}
+          >
+            <IconSymbol
+              ios_icon_name="plus.circle.fill"
+              android_material_icon_name="add_circle"
+              size={28}
+              color={colors.primary}
+            />
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={styles.emojiButton}
             onPress={() => setShowEmojiPicker(!showEmojiPicker)}
@@ -341,6 +420,12 @@ export default function ChatScreen() {
             </View>
           </TouchableOpacity>
         </Modal>
+
+        <MediaPicker
+          visible={showMediaPicker}
+          onClose={() => setShowMediaPicker(false)}
+          onMediaSelected={handleMediaSelected}
+        />
       </KeyboardAvoidingView>
     </>
   );
@@ -495,6 +580,13 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     padding: 12,
     borderTopWidth: 1,
+  },
+  attachButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 4,
   },
   emojiButton: {
     width: 36,
