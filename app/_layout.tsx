@@ -6,7 +6,6 @@ import { useEffect } from 'react';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ChatProvider } from '@/contexts/ChatContext';
 import { SettingsProvider } from '@/contexts/SettingsContext';
-import { WidgetProvider } from '@/contexts/WidgetContext';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -29,27 +28,25 @@ export default function RootLayout() {
   }
 
   return (
-    <WidgetProvider>
-      <AuthProvider>
-        <SettingsProvider>
-          <ChatProvider>
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                animation: 'slide_from_right',
-              }}
-            >
-              <Stack.Screen name="welcome" />
-              <Stack.Screen name="login" />
-              <Stack.Screen name="signup" />
-              <Stack.Screen name="(tabs)" />
-              <Stack.Screen name="chat/[id]" />
-              <Stack.Screen name="group/create" />
-              <Stack.Screen name="starred" />
-            </Stack>
-          </ChatProvider>
-        </SettingsProvider>
-      </AuthProvider>
-    </WidgetProvider>
+    <AuthProvider>
+      <SettingsProvider>
+        <ChatProvider>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              animation: 'slide_from_right',
+            }}
+          >
+            <Stack.Screen name="welcome" />
+            <Stack.Screen name="login" />
+            <Stack.Screen name="signup" />
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="chat/[id]" />
+            <Stack.Screen name="group/create" />
+            <Stack.Screen name="starred" />
+          </Stack>
+        </ChatProvider>
+      </SettingsProvider>
+    </AuthProvider>
   );
 }
