@@ -31,8 +31,8 @@ export default function RootLayout() {
   return (
     <WidgetProvider>
       <AuthProvider>
-        <ChatProvider>
-          <SettingsProvider>
+        <SettingsProvider>
+          <ChatProvider>
             <Stack
               screenOptions={{
                 headerShown: false,
@@ -47,8 +47,8 @@ export default function RootLayout() {
               <Stack.Screen name="group/create" />
               <Stack.Screen name="starred" />
             </Stack>
-          </SettingsProvider>
-        </ChatProvider>
+          </ChatProvider>
+        </SettingsProvider>
       </AuthProvider>
     </WidgetProvider>
   );
