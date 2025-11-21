@@ -7,6 +7,22 @@ export interface User {
   contacts: string[];
   avatar?: string;
   emojiStatus?: string;
+  status?: UserStatus;
+  lastSeen?: number;
+  blockedUsers?: string[];
+  privacySettings?: PrivacySettings;
+}
+
+export interface UserStatus {
+  type: 'available' | 'busy' | 'dnd' | 'custom';
+  customText?: string;
+  expiresAt?: number;
+}
+
+export interface PrivacySettings {
+  showLastSeen: boolean;
+  showStatus: boolean;
+  showOnline: boolean;
 }
 
 export interface Message {
@@ -35,6 +51,23 @@ export interface Message {
     name: string;
     phone: string;
   };
+  isStarred?: boolean;
+  forwardedFrom?: string;
+  replyTo?: string;
+}
+
+export interface MessageReaction {
+  messageId: string;
+  userId: string;
+  emoji: string;
+  timestamp: number;
+}
+
+export interface StarredMessage {
+  messageId: string;
+  userId: string;
+  chatId: string;
+  createdAt: number;
 }
 
 export interface Conversation {
@@ -44,6 +77,10 @@ export interface Conversation {
   lastMessage?: Message;
   unreadCount: number;
   isGroup?: boolean;
+  isPinned?: boolean;
+  isArchived?: boolean;
+  category?: 'personal' | 'work' | 'groups';
+  customBackground?: string;
 }
 
 export interface Group {
@@ -88,4 +125,10 @@ export interface MediaAttachment {
   mimeType?: string;
   thumbnail?: string;
   duration?: number;
+}
+
+export interface AppSettings {
+  theme: 'light' | 'dark' | 'auto';
+  fontSize: 'small' | 'medium' | 'large';
+  notificationsEnabled: boolean;
 }
