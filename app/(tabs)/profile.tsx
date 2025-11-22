@@ -453,7 +453,7 @@ export default function ProfileScreen() {
             <View style={styles.infoHeader}>
               <View style={styles.logoCircle}>
                 <Image
-                  source={require('@/assets/images/2ad18e60-a001-4839-ab8d-c2cf85815ff0.png')}
+                  source={require('@/assets/images/1fc748b5-afe0-451c-a430-121058317495.png')}
                   style={styles.logoImage}
                   resizeMode="contain"
                 />
