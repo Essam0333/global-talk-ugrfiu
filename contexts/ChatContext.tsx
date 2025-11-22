@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Message, Conversation, User, Group, MediaAttachment } from '@/types';
 import { useAuth } from './AuthContext';
@@ -27,15 +27,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [isTyping, setIsTypingState] = useState<Record<string, boolean>>({});
   const isInitialized = useRef(false);
 
-  useEffect(() => {
-    if (user && !isInitialized.current) {
-      console.log('Initializing ChatContext for user:', user.username);
-      isInitialized.current = true;
-      loadConversations();
-    }
-  }, [user]);
-
-  const loadConversations = async () => {
+  const loadConversations = useCallback(async () => {
     if (!user) {
       console.log('No user, skipping conversation load');
       return;
@@ -56,7 +48,15 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       console.error('Error loading conversations:', error);
       setConversations([]);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user && !isInitialized.current) {
+      console.log('Initializing ChatContext for user:', user.username);
+      isInitialized.current = true;
+      loadConversations();
+    }
+  }, [user, loadConversations]);
 
   const updateConversation = async (conversationId: string, updates: Partial<Conversation>) => {
     if (!user) return;

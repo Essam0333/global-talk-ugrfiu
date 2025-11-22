@@ -33,7 +33,7 @@ export default function TypingIndicator() {
     animate(dot1, 0);
     animate(dot2, 150);
     animate(dot3, 300);
-  }, []);
+  }, [dot1, dot2, dot3]);
 
   const dotStyle = (animatedValue: Animated.Value) => ({
     opacity: animatedValue.interpolate({

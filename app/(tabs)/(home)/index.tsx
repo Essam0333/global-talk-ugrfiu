@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, useColorScheme, RefreshControl, Alert } from "react-native";
 import { router, Redirect } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -24,14 +24,7 @@ export default function HomeScreen() {
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'personal' | 'work' | 'groups'>('all');
   const [showArchived, setShowArchived] = useState(false);
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      loadUsers();
-      loadGroups();
-    }
-  }, [isAuthenticated]);
-
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       const usersJson = await AsyncStorage.getItem('users');
       if (usersJson) {
@@ -41,9 +34,9 @@ export default function HomeScreen() {
     } catch (error) {
       console.log('Error loading users:', error);
     }
-  };
+  }, [user?.id]);
 
-  const loadGroups = async () => {
+  const loadGroups = useCallback(async () => {
     try {
       const groupsJson = await AsyncStorage.getItem('groups');
       if (groupsJson) {
@@ -52,7 +45,14 @@ export default function HomeScreen() {
     } catch (error) {
       console.log('Error loading groups:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadUsers();
+      loadGroups();
+    }
+  }, [isAuthenticated, loadUsers, loadGroups]);
 
   const onRefresh = async () => {
     setRefreshing(true);

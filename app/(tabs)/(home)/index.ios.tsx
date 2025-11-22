@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Stack } from "expo-router";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, useColorScheme } from "react-native";
 import { router, Redirect } from "expo-router";
@@ -18,13 +18,7 @@ export default function HomeScreen() {
   const { conversations } = useChat();
   const [allUsers, setAllUsers] = useState<User[]>([]);
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      loadUsers();
-    }
-  }, [isAuthenticated]);
-
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       const usersJson = await AsyncStorage.getItem('users');
       if (usersJson) {
@@ -34,7 +28,13 @@ export default function HomeScreen() {
     } catch (error) {
       console.log('Error loading users:', error);
     }
-  };
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadUsers();
+    }
+  }, [isAuthenticated, loadUsers]);
 
   if (!isAuthenticated) {
     return <Redirect href="/welcome" />;

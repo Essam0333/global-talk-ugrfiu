@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -31,11 +31,7 @@ export default function CreateGroupScreen() {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [isPrivate, setIsPrivate] = useState(false);
 
-  useEffect(() => {
-    loadUsers();
-  }, []);
-
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       const usersJson = await AsyncStorage.getItem('users');
       if (usersJson) {
@@ -45,7 +41,11 @@ export default function CreateGroupScreen() {
     } catch (error) {
       console.log('Error loading users:', error);
     }
-  };
+  }, [user?.id]);
+
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
 
   const handleSelectPhoto = async () => {
     try {

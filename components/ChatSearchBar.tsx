@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   TextInput,
@@ -22,14 +22,14 @@ export default function ChatSearchBar({ onSearch, onClose }: ChatSearchBarProps)
   const [searchQuery, setSearchQuery] = useState('');
   const [slideAnim] = useState(new Animated.Value(-100));
 
-  React.useEffect(() => {
+  useEffect(() => {
     Animated.spring(slideAnim, {
       toValue: 0,
       useNativeDriver: true,
       tension: 65,
       friction: 8,
     }).start();
-  }, []);
+  }, [slideAnim]);
 
   const handleSearch = (text: string) => {
     setSearchQuery(text);

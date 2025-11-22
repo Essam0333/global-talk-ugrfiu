@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -24,11 +24,7 @@ export default function ContactsScreen() {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    loadUsers();
-  }, []);
-
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       const usersJson = await AsyncStorage.getItem('users');
       if (usersJson) {
@@ -38,7 +34,11 @@ export default function ContactsScreen() {
     } catch (error) {
       console.log('Error loading users:', error);
     }
-  };
+  }, [user?.id]);
+
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
 
   const filteredUsers = allUsers.filter(
     u =>
