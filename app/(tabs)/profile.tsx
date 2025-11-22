@@ -80,6 +80,19 @@ export default function ProfileScreen() {
           <Text style={styles.displayName}>{user.displayName}</Text>
           <Text style={styles.username}>@{user.username}</Text>
           
+          <TouchableOpacity
+            style={styles.editProfileButton}
+            onPress={() => router.push('/signup')}
+          >
+            <IconSymbol
+              ios_icon_name="pencil"
+              android_material_icon_name="edit"
+              size={16}
+              color="#FFFFFF"
+            />
+            <Text style={styles.editProfileText}>Edit Profile</Text>
+          </TouchableOpacity>
+
           <View style={styles.statusBadge}>
             <Text style={styles.statusEmoji}>
               {STATUS_OPTIONS.find(s => s.type === selectedStatus)?.icon}
@@ -535,6 +548,22 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.9)',
     marginBottom: 12,
     fontFamily: 'Inter_400Regular',
+  },
+  editProfileButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+    marginBottom: 12,
+  },
+  editProfileText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
   statusBadge: {
     flexDirection: 'row',

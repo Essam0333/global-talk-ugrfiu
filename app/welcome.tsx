@@ -37,6 +37,18 @@ export default function WelcomeScreen() {
         />
       </TouchableOpacity>
 
+      <TouchableOpacity
+        style={[styles.editButton, { backgroundColor: isDark ? colors.cardDark : colors.card }]}
+        onPress={() => router.push('/signup')}
+      >
+        <IconSymbol
+          ios_icon_name="pencil"
+          android_material_icon_name="edit"
+          size={20}
+          color={colors.primary}
+        />
+      </TouchableOpacity>
+
       <View style={styles.content}>
         <LinearGradient
           colors={isDark ? [colors.primaryDark, colors.secondaryDark] : [colors.gradientStart, colors.gradientEnd]}
@@ -137,6 +149,18 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 48,
     left: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
+  },
+  editButton: {
+    position: 'absolute',
+    top: 48,
+    right: 20,
     width: 44,
     height: 44,
     borderRadius: 22,
