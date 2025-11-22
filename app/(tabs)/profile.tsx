@@ -9,6 +9,7 @@ import {
   Alert,
   useColorScheme,
   Switch,
+  Image,
 } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,7 +18,6 @@ import { useSettings } from '@/contexts/SettingsContext';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import { getLanguageName } from '@/utils/languages';
-import { Image } from 'react-native';
 
 const MOOD_EMOJIS = ['😊', '😎', '🤔', '😴', '🎉', '💪', '🌟', '❤️'];
 const STATUS_OPTIONS = [
@@ -424,17 +424,18 @@ export default function ProfileScreen() {
                 backgroundColor: isDark ? colors.cardDark : colors.card,
               },
             ]}
+            onPress={() => router.push('/privacy')}
           >
             <View style={styles.settingIcon}>
               <LinearGradient
-                colors={[colors.primary, colors.secondary]}
+                colors={[colors.error, '#DC2626']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.settingIconGradient}
               >
                 <IconSymbol
-                  ios_icon_name="lock.fill"
-                  android_material_icon_name="lock"
+                  ios_icon_name="hand.raised.fill"
+                  android_material_icon_name="block"
                   size={20}
                   color="#FFFFFF"
                 />
@@ -445,7 +446,7 @@ export default function ProfileScreen() {
                 Privacy & Security
               </Text>
               <Text style={[styles.settingValue, { color: colors.textSecondary }]}>
-                Manage privacy settings
+                Block users and manage privacy
               </Text>
             </View>
             <IconSymbol

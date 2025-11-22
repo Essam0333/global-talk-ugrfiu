@@ -44,6 +44,7 @@ export default function RootLayout() {
             <Stack.Screen name="chat/[id]" />
             <Stack.Screen name="group/create" />
             <Stack.Screen name="starred" />
+            <Stack.Screen name="privacy" />
           </Stack>
         </ChatProvider>
       </SettingsProvider>

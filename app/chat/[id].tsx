@@ -59,6 +59,10 @@ export default function ChatScreen() {
   const [bulkSelectMode, setBulkSelectMode] = useState(false);
   const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
   const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState<'spam' | 'abuse' | 'harassment' | null>(null);
+  const [reportDetails, setReportDetails] = useState('');
+  const [isBlocked, setIsBlocked] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
   const isGroup = (id as string)?.startsWith('group_');
@@ -71,11 +75,27 @@ export default function ChatScreen() {
         loadGroup();
       } else {
         loadOtherUser();
+        checkIfBlocked();
       }
       loadReactions();
       loadStarredMessages();
     }
   }, [id]);
+
+  const checkIfBlocked = async () => {
+    if (!user || !id) return;
+
+    try {
+      const blockedJson = await AsyncStorage.getItem(`blocked_${user.id}`);
+      if (blockedJson) {
+        const blocked = JSON.parse(blockedJson);
+        const isUserBlocked = blocked.some((b: any) => b.id === id);
+        setIsBlocked(isUserBlocked);
+      }
+    } catch (error) {
+      console.log('Error checking blocked status:', error);
+    }
+  };
 
   const loadOtherUser = async () => {
     try {
@@ -167,6 +187,82 @@ export default function ChatScreen() {
       }
       setSelectedMessages(newSelected);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
+
+  const handleBlockUser = async () => {
+    if (!otherUser || !user) return;
+
+    Alert.alert(
+      'Block User',
+      `Are you sure you want to block ${otherUser.displayName}? They will not be able to message you or see your status.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Block',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const blockedJson = await AsyncStorage.getItem(`blocked_${user.id}`);
+              const blocked = blockedJson ? JSON.parse(blockedJson) : [];
+              
+              blocked.push({
+                id: otherUser.id,
+                username: otherUser.username,
+                displayName: otherUser.displayName,
+                blockedAt: Date.now(),
+              });
+
+              await AsyncStorage.setItem(`blocked_${user.id}`, JSON.stringify(blocked));
+              setIsBlocked(true);
+              setSelectedMessageForActions(null);
+              
+              Alert.alert('User Blocked', `${otherUser.displayName} has been blocked.`);
+            } catch (error) {
+              console.log('Error blocking user:', error);
+              Alert.alert('Error', 'Failed to block user');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleReportUser = () => {
+    setSelectedMessageForActions(null);
+    setShowReportModal(true);
+  };
+
+  const submitReport = async () => {
+    if (!reportReason || !user || !otherUser) return;
+
+    try {
+      const report = {
+        id: `report_${Date.now()}`,
+        reporterId: user.id,
+        reportedUserId: otherUser.id,
+        reason: reportReason,
+        details: reportDetails,
+        messageContext: selectedMessageForActions?.originalText || '',
+        timestamp: Date.now(),
+      };
+
+      const reportsJson = await AsyncStorage.getItem('reports');
+      const reports = reportsJson ? JSON.parse(reportsJson) : [];
+      reports.push(report);
+      await AsyncStorage.setItem('reports', JSON.stringify(reports));
+
+      setShowReportModal(false);
+      setReportReason(null);
+      setReportDetails('');
+      
+      Alert.alert(
+        'Report Submitted',
+        'Thank you for your report. We will review it and take appropriate action.'
+      );
+    } catch (error) {
+      console.log('Error submitting report:', error);
+      Alert.alert('Error', 'Failed to submit report');
     }
   };
 
@@ -306,6 +402,11 @@ export default function ChatScreen() {
   const handleSend = async () => {
     if (!messageText.trim() || !id) return;
 
+    if (isBlocked) {
+      Alert.alert('Cannot Send', 'You have blocked this user. Unblock them to send messages.');
+      return;
+    }
+
     if (isGroup) {
       await sendMessage(undefined, messageText.trim(), id as string);
     } else {
@@ -321,6 +422,11 @@ export default function ChatScreen() {
 
   const handleMediaSelected = async (media: MediaAttachment) => {
     if (!id) return;
+
+    if (isBlocked) {
+      Alert.alert('Cannot Send', 'You have blocked this user. Unblock them to send messages.');
+      return;
+    }
 
     if (isGroup) {
       await sendMediaMessage(undefined, media, id as string);
@@ -410,7 +516,8 @@ export default function ChatScreen() {
       );
     }
 
-    const statusText = otherUser?.status?.type === 'available' ? 'Online' : 
+    const statusText = isBlocked ? 'Blocked' :
+                      otherUser?.status?.type === 'available' ? 'Online' : 
                       otherUser?.status?.type === 'busy' ? 'Busy' :
                       otherUser?.status?.type === 'dnd' ? 'Do Not Disturb' :
                       otherUser?.lastSeen ? `Last seen ${formatTime(otherUser.lastSeen)}` : 'Offline';
@@ -421,7 +528,7 @@ export default function ChatScreen() {
           <Text style={styles.headerAvatarText}>
             {otherUser?.displayName.charAt(0).toUpperCase()}
           </Text>
-          {otherUser?.status?.type === 'available' && (
+          {!isBlocked && otherUser?.status?.type === 'available' && (
             <View style={[styles.onlineIndicator, { backgroundColor: colors.online }]} />
           )}
         </View>
@@ -549,6 +656,20 @@ export default function ChatScreen() {
                 color={colors.textSecondary}
               />
             </TouchableOpacity>
+          </View>
+        )}
+
+        {isBlocked && (
+          <View style={[styles.blockedBanner, { backgroundColor: colors.error }]}>
+            <IconSymbol
+              ios_icon_name="hand.raised.fill"
+              android_material_icon_name="block"
+              size={16}
+              color="#FFFFFF"
+            />
+            <Text style={styles.blockedText}>
+              You have blocked this user. Go to Privacy settings to unblock.
+            </Text>
           </View>
         )}
 
@@ -730,20 +851,22 @@ export default function ChatScreen() {
           <TouchableOpacity
             style={styles.attachButton}
             onPress={() => setShowMediaPicker(true)}
+            disabled={isBlocked}
           >
             <IconSymbol
               ios_icon_name="plus.circle.fill"
               android_material_icon_name="add_circle"
               size={28}
-              color={colors.primary}
+              color={isBlocked ? colors.textSecondary : colors.primary}
             />
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.emojiButton}
             onPress={() => setShowEmojiPicker(!showEmojiPicker)}
+            disabled={isBlocked}
           >
-            <Text style={styles.emojiButtonText}>😊</Text>
+            <Text style={[styles.emojiButtonText, isBlocked && { opacity: 0.5 }]}>😊</Text>
           </TouchableOpacity>
           
           <TextInput
@@ -754,12 +877,13 @@ export default function ChatScreen() {
                 color: isDark ? colors.textDark : colors.text,
               },
             ]}
-            placeholder="Type a message..."
+            placeholder={isBlocked ? 'Unblock to send messages' : 'Type a message...'}
             placeholderTextColor={colors.textSecondary}
             value={messageText}
             onChangeText={setMessageText}
             multiline
             maxLength={1000}
+            editable={!isBlocked}
           />
           
           <TouchableOpacity
@@ -767,10 +891,10 @@ export default function ChatScreen() {
               styles.sendButton,
             ]}
             onPress={handleSend}
-            disabled={!messageText.trim()}
+            disabled={!messageText.trim() || isBlocked}
           >
             <LinearGradient
-              colors={messageText.trim() ? [colors.primary, colors.secondary] : [colors.textSecondary, colors.textSecondary]}
+              colors={messageText.trim() && !isBlocked ? [colors.primary, colors.secondary] : [colors.textSecondary, colors.textSecondary]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.sendButtonGradient}
@@ -884,6 +1008,32 @@ export default function ChatScreen() {
                   React
                 </Text>
               </TouchableOpacity>
+              {!isGroup && (
+                <>
+                  <TouchableOpacity style={styles.actionItem} onPress={handleReportUser}>
+                    <IconSymbol
+                      ios_icon_name="exclamationmark.triangle.fill"
+                      android_material_icon_name="report"
+                      size={20}
+                      color={colors.warning}
+                    />
+                    <Text style={[styles.actionText, { color: colors.warning }]}>
+                      Report User
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.actionItem} onPress={handleBlockUser}>
+                    <IconSymbol
+                      ios_icon_name="hand.raised.fill"
+                      android_material_icon_name="block"
+                      size={20}
+                      color={colors.error}
+                    />
+                    <Text style={[styles.actionText, { color: colors.error }]}>
+                      Block User
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
               <TouchableOpacity style={styles.actionItem} onPress={handleDeleteMessage}>
                 <IconSymbol
                   ios_icon_name="trash"
@@ -897,6 +1047,202 @@ export default function ChatScreen() {
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
+        </Modal>
+
+        <Modal
+          visible={showReportModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowReportModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[
+              styles.reportModal,
+              { backgroundColor: isDark ? colors.cardDark : colors.card },
+            ]}>
+              <View style={styles.reportHeader}>
+                <Text style={[styles.reportTitle, { color: isDark ? colors.textDark : colors.text }]}>
+                  Report User
+                </Text>
+                <TouchableOpacity onPress={() => setShowReportModal(false)}>
+                  <IconSymbol
+                    ios_icon_name="xmark.circle.fill"
+                    android_material_icon_name="cancel"
+                    size={28}
+                    color={colors.textSecondary}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={[styles.reportSubtitle, { color: colors.textSecondary }]}>
+                Why are you reporting {otherUser?.displayName}?
+              </Text>
+
+              <TouchableOpacity
+                style={[
+                  styles.reportOption,
+                  {
+                    backgroundColor: isDark ? colors.backgroundAltDark : colors.backgroundAlt,
+                    borderColor: reportReason === 'spam' ? colors.primary : 'transparent',
+                    borderWidth: 2,
+                  },
+                ]}
+                onPress={() => setReportReason('spam')}
+              >
+                <IconSymbol
+                  ios_icon_name="envelope.badge.fill"
+                  android_material_icon_name="mark_email_unread"
+                  size={24}
+                  color={reportReason === 'spam' ? colors.primary : colors.textSecondary}
+                />
+                <View style={styles.reportOptionText}>
+                  <Text style={[styles.reportOptionTitle, { color: isDark ? colors.textDark : colors.text }]}>
+                    Spam
+                  </Text>
+                  <Text style={[styles.reportOptionDesc, { color: colors.textSecondary }]}>
+                    Unwanted or repetitive messages
+                  </Text>
+                </View>
+                {reportReason === 'spam' && (
+                  <IconSymbol
+                    ios_icon_name="checkmark.circle.fill"
+                    android_material_icon_name="check_circle"
+                    size={24}
+                    color={colors.primary}
+                  />
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.reportOption,
+                  {
+                    backgroundColor: isDark ? colors.backgroundAltDark : colors.backgroundAlt,
+                    borderColor: reportReason === 'abuse' ? colors.primary : 'transparent',
+                    borderWidth: 2,
+                  },
+                ]}
+                onPress={() => setReportReason('abuse')}
+              >
+                <IconSymbol
+                  ios_icon_name="exclamationmark.triangle.fill"
+                  android_material_icon_name="warning"
+                  size={24}
+                  color={reportReason === 'abuse' ? colors.primary : colors.textSecondary}
+                />
+                <View style={styles.reportOptionText}>
+                  <Text style={[styles.reportOptionTitle, { color: isDark ? colors.textDark : colors.text }]}>
+                    Abuse
+                  </Text>
+                  <Text style={[styles.reportOptionDesc, { color: colors.textSecondary }]}>
+                    Offensive or harmful content
+                  </Text>
+                </View>
+                {reportReason === 'abuse' && (
+                  <IconSymbol
+                    ios_icon_name="checkmark.circle.fill"
+                    android_material_icon_name="check_circle"
+                    size={24}
+                    color={colors.primary}
+                  />
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.reportOption,
+                  {
+                    backgroundColor: isDark ? colors.backgroundAltDark : colors.backgroundAlt,
+                    borderColor: reportReason === 'harassment' ? colors.primary : 'transparent',
+                    borderWidth: 2,
+                  },
+                ]}
+                onPress={() => setReportReason('harassment')}
+              >
+                <IconSymbol
+                  ios_icon_name="hand.raised.fill"
+                  android_material_icon_name="block"
+                  size={24}
+                  color={reportReason === 'harassment' ? colors.primary : colors.textSecondary}
+                />
+                <View style={styles.reportOptionText}>
+                  <Text style={[styles.reportOptionTitle, { color: isDark ? colors.textDark : colors.text }]}>
+                    Harassment
+                  </Text>
+                  <Text style={[styles.reportOptionDesc, { color: colors.textSecondary }]}>
+                    Bullying or threatening behavior
+                  </Text>
+                </View>
+                {reportReason === 'harassment' && (
+                  <IconSymbol
+                    ios_icon_name="checkmark.circle.fill"
+                    android_material_icon_name="check_circle"
+                    size={24}
+                    color={colors.primary}
+                  />
+                )}
+              </TouchableOpacity>
+
+              <Text style={[styles.reportLabel, { color: isDark ? colors.textDark : colors.text }]}>
+                Additional details (optional)
+              </Text>
+              <TextInput
+                style={[
+                  styles.reportInput,
+                  {
+                    backgroundColor: isDark ? colors.backgroundAltDark : colors.backgroundAlt,
+                    color: isDark ? colors.textDark : colors.text,
+                    borderColor: isDark ? colors.borderDark : colors.border,
+                  },
+                ]}
+                placeholder="Provide more context..."
+                placeholderTextColor={colors.textSecondary}
+                value={reportDetails}
+                onChangeText={setReportDetails}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+
+              {selectedMessageForActions && (
+                <View style={[
+                  styles.messageContext,
+                  { backgroundColor: isDark ? colors.backgroundAltDark : colors.backgroundAlt },
+                ]}>
+                  <Text style={[styles.messageContextLabel, { color: colors.textSecondary }]}>
+                    Message context:
+                  </Text>
+                  <Text style={[styles.messageContextText, { color: isDark ? colors.textDark : colors.text }]}>
+                    &quot;{selectedMessageForActions.originalText}&quot;
+                  </Text>
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={[
+                  styles.submitReportButton,
+                  { opacity: reportReason ? 1 : 0.5 },
+                ]}
+                onPress={submitReport}
+                disabled={!reportReason}
+              >
+                <LinearGradient
+                  colors={reportReason ? [colors.error, '#DC2626'] : [colors.textSecondary, colors.textSecondary]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.submitReportButtonGradient}
+                >
+                  <IconSymbol
+                    ios_icon_name="paperplane.fill"
+                    android_material_icon_name="send"
+                    size={20}
+                    color="#FFFFFF"
+                  />
+                  <Text style={styles.submitReportButtonText}>Submit Report</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
         </Modal>
 
         <MediaPicker
@@ -971,6 +1317,20 @@ const styles = StyleSheet.create({
   },
   headerButton: {
     padding: 8,
+  },
+  blockedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  blockedText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
   replyPreview: {
     flexDirection: 'row',
@@ -1226,5 +1586,99 @@ const styles = StyleSheet.create({
   },
   actionEmoji: {
     fontSize: 20,
+  },
+  reportModal: {
+    borderRadius: 24,
+    padding: 24,
+    maxWidth: 500,
+    width: '90%',
+    maxHeight: '80%',
+    boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.2)',
+  },
+  reportHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  reportTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+  },
+  reportSubtitle: {
+    fontSize: 16,
+    marginBottom: 20,
+    fontFamily: 'Inter_400Regular',
+  },
+  reportOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    gap: 12,
+  },
+  reportOptionText: {
+    flex: 1,
+  },
+  reportOptionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 2,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  reportOptionDesc: {
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+  },
+  reportLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 8,
+    marginBottom: 8,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  reportInput: {
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 16,
+    borderWidth: 1,
+    marginBottom: 16,
+    minHeight: 100,
+    fontFamily: 'Inter_400Regular',
+  },
+  messageContext: {
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  messageContextLabel: {
+    fontSize: 12,
+    marginBottom: 4,
+    fontFamily: 'Inter_400Regular',
+  },
+  messageContextText: {
+    fontSize: 14,
+    fontStyle: 'italic',
+    fontFamily: 'Inter_400Regular',
+  },
+  submitReportButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    boxShadow: '0px 4px 16px rgba(239, 68, 68, 0.3)',
+  },
+  submitReportButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 8,
+  },
+  submitReportButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
 });
