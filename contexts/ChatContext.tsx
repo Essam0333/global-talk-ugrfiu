@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Message, Conversation, User, Group, MediaAttachment } from '@/types';
 import { useAuth } from './AuthContext';
@@ -25,15 +25,15 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Record<string, Message[]>>({});
   const [isTyping, setIsTypingState] = useState<Record<string, boolean>>({});
-  const [isInitialized, setIsInitialized] = useState(false);
+  const isInitialized = useRef(false);
 
   useEffect(() => {
-    if (user && !isInitialized) {
+    if (user && !isInitialized.current) {
       console.log('Initializing ChatContext for user:', user.username);
+      isInitialized.current = true;
       loadConversations();
-      setIsInitialized(true);
     }
-  }, [user, isInitialized]);
+  }, [user]);
 
   const loadConversations = async () => {
     if (!user) {

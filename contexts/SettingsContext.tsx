@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppSettings } from '@/types';
 
@@ -19,9 +19,13 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
+  const isInitialized = useRef(false);
 
   useEffect(() => {
-    loadSettings();
+    if (!isInitialized.current) {
+      isInitialized.current = true;
+      loadSettings();
+    }
   }, []);
 
   const loadSettings = async () => {

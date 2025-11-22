@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User, AuthState } from '@/types';
 
@@ -16,9 +16,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     token: null,
   });
   const [isLoading, setIsLoading] = useState(true);
+  const isInitialized = useRef(false);
 
   useEffect(() => {
-    loadUser();
+    if (!isInitialized.current) {
+      isInitialized.current = true;
+      loadUser();
+    }
   }, []);
 
   const loadUser = async () => {

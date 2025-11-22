@@ -59,10 +59,7 @@ export async function translateText(
   toLanguage: string
 ): Promise<string> {
   try {
-    // Simulate minimal API delay - reduced from 300ms to 50ms
-    await new Promise(resolve => setTimeout(resolve, 50));
-
-    // If same language, return original
+    // If same language, return original immediately
     if (fromLanguage === toLanguage) {
       return text;
     }
@@ -82,9 +79,6 @@ export async function translateText(
 
 export async function detectLanguage(text: string): Promise<string> {
   try {
-    // Simulate minimal API delay - reduced from 100ms to 20ms
-    await new Promise(resolve => setTimeout(resolve, 20));
-
     // Simple language detection based on character sets
     const arabicPattern = /[\u0600-\u06FF]/;
     const chinesePattern = /[\u4E00-\u9FFF]/;
