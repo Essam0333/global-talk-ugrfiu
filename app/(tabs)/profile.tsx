@@ -6,7 +6,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Alert,
   useColorScheme,
   Switch,
   Image,
@@ -29,28 +28,10 @@ const STATUS_OPTIONS = [
 export default function ProfileScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const { user, logout, updateUser } = useAuth();
+  const { user, updateUser } = useAuth();
   const { settings, updateSettings } = useSettings();
   const [selectedMood, setSelectedMood] = useState(user?.emojiStatus || '😊');
   const [selectedStatus, setSelectedStatus] = useState(user?.status?.type || 'available');
-
-  const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            await logout();
-            router.replace('/welcome');
-          },
-        },
-      ]
-    );
-  };
 
   const handleMoodChange = async (emoji: string) => {
     setSelectedMood(emoji);
@@ -490,25 +471,7 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={handleLogout}
-        >
-          <LinearGradient
-            colors={[colors.error, '#DC2626']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.logoutButtonGradient}
-          >
-            <IconSymbol
-              ios_icon_name="rectangle.portrait.and.arrow.right"
-              android_material_icon_name="logout"
-              size={20}
-              color="#FFFFFF"
-            />
-            <Text style={styles.logoutButtonText}>Logout</Text>
-          </LinearGradient>
-        </TouchableOpacity>
+        <View style={{ height: 100 }} />
       </ScrollView>
     </View>
   );
@@ -740,25 +703,5 @@ const styles = StyleSheet.create({
   infoVersion: {
     fontSize: 13,
     fontFamily: 'Inter_400Regular',
-  },
-  logoutButton: {
-    marginHorizontal: 20,
-    marginBottom: 100,
-    borderRadius: 12,
-    overflow: 'hidden',
-    boxShadow: '0px 4px 16px rgba(239, 68, 68, 0.3)',
-  },
-  logoutButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-  },
-  logoutButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
-    fontFamily: 'Inter_600SemiBold',
   },
 });
