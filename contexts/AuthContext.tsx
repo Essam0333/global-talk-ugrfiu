@@ -11,10 +11,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authState, setAuthState] = useState<AuthState>({
-    isAuthenticated: true, // Always authenticated
+    isAuthenticated: true,
     user: null,
     token: null,
   });
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     loadUser();
@@ -22,28 +23,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loadUser = async () => {
     try {
-      console.log('Loading user...');
+      console.log('Loading user from storage...');
       const userJson = await AsyncStorage.getItem('user');
       
       if (userJson) {
         const user = JSON.parse(userJson);
-        console.log('User loaded:', user);
+        console.log('User loaded successfully:', user.username);
         setAuthState({
           isAuthenticated: true,
           user,
           token: 'default_token',
         });
       } else {
-        // Create a default user
+        console.log('No user found, creating default user...');
         const defaultUser: User = {
-          id: 'user_default',
+          id: `user_${Date.now()}`,
           username: 'user',
           displayName: 'User',
           preferredLanguage: 'en',
           contacts: [],
         };
         await AsyncStorage.setItem('user', JSON.stringify(defaultUser));
-        console.log('Default user created:', defaultUser);
+        console.log('Default user created:', defaultUser.username);
         setAuthState({
           isAuthenticated: true,
           user: defaultUser,
@@ -51,10 +52,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
       }
     } catch (error) {
-      console.log('Error loading user:', error);
-      // Even on error, create a default user
+      console.error('Error loading user:', error);
       const defaultUser: User = {
-        id: 'user_default',
+        id: `user_${Date.now()}`,
         username: 'user',
         displayName: 'User',
         preferredLanguage: 'en',
@@ -65,14 +65,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user: defaultUser,
         token: 'default_token',
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const updateUser = async (updates: Partial<User>) => {
-    if (!authState.user) return;
+    if (!authState.user) {
+      console.log('No user to update');
+      return;
+    }
 
     try {
-      console.log('Updating user:', updates);
+      console.log('Updating user with:', updates);
       const updatedUser = { ...authState.user, ...updates };
       await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
       
@@ -83,9 +88,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       console.log('User updated successfully');
     } catch (error) {
-      console.log('Update user error:', error);
+      console.error('Update user error:', error);
+      throw error;
     }
   };
+
+  if (isLoading) {
+    return null;
+  }
 
   return (
     <AuthContext.Provider value={{ ...authState, updateUser }}>

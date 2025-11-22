@@ -58,42 +58,52 @@ export async function translateText(
   fromLanguage: string,
   toLanguage: string
 ): Promise<string> {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 300));
+  try {
+    // Simulate minimal API delay - reduced from 300ms to 50ms
+    await new Promise(resolve => setTimeout(resolve, 50));
 
-  // If same language, return original
-  if (fromLanguage === toLanguage) {
-    return text;
+    // If same language, return original
+    if (fromLanguage === toLanguage) {
+      return text;
+    }
+
+    // Check mock translations
+    if (mockTranslations[text] && mockTranslations[text][toLanguage]) {
+      return mockTranslations[text][toLanguage];
+    }
+
+    // For demo purposes, add language prefix to show translation
+    return `[${toLanguage.toUpperCase()}] ${text}`;
+  } catch (error) {
+    console.log('Translation error:', error);
+    return text; // Return original text on error
   }
-
-  // Check mock translations
-  if (mockTranslations[text] && mockTranslations[text][toLanguage]) {
-    return mockTranslations[text][toLanguage];
-  }
-
-  // For demo purposes, add language prefix to show translation
-  return `[${toLanguage.toUpperCase()}] ${text}`;
 }
 
 export async function detectLanguage(text: string): Promise<string> {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 100));
+  try {
+    // Simulate minimal API delay - reduced from 100ms to 20ms
+    await new Promise(resolve => setTimeout(resolve, 20));
 
-  // Simple language detection based on character sets
-  const arabicPattern = /[\u0600-\u06FF]/;
-  const chinesePattern = /[\u4E00-\u9FFF]/;
-  const japanesePattern = /[\u3040-\u309F\u30A0-\u30FF]/;
-  const koreanPattern = /[\uAC00-\uD7AF]/;
-  const cyrillicPattern = /[\u0400-\u04FF]/;
-  const greekPattern = /[\u0370-\u03FF]/;
+    // Simple language detection based on character sets
+    const arabicPattern = /[\u0600-\u06FF]/;
+    const chinesePattern = /[\u4E00-\u9FFF]/;
+    const japanesePattern = /[\u3040-\u309F\u30A0-\u30FF]/;
+    const koreanPattern = /[\uAC00-\uD7AF]/;
+    const cyrillicPattern = /[\u0400-\u04FF]/;
+    const greekPattern = /[\u0370-\u03FF]/;
 
-  if (arabicPattern.test(text)) return 'ar';
-  if (chinesePattern.test(text)) return 'zh';
-  if (japanesePattern.test(text)) return 'ja';
-  if (koreanPattern.test(text)) return 'ko';
-  if (cyrillicPattern.test(text)) return 'ru';
-  if (greekPattern.test(text)) return 'el';
+    if (arabicPattern.test(text)) return 'ar';
+    if (chinesePattern.test(text)) return 'zh';
+    if (japanesePattern.test(text)) return 'ja';
+    if (koreanPattern.test(text)) return 'ko';
+    if (cyrillicPattern.test(text)) return 'ru';
+    if (greekPattern.test(text)) return 'el';
 
-  // Default to English
-  return 'en';
+    // Default to English
+    return 'en';
+  } catch (error) {
+    console.log('Language detection error:', error);
+    return 'en'; // Default to English on error
+  }
 }

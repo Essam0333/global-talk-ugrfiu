@@ -25,23 +25,36 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Record<string, Message[]>>({});
   const [isTyping, setIsTypingState] = useState<Record<string, boolean>>({});
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    if (user) {
+    if (user && !isInitialized) {
+      console.log('Initializing ChatContext for user:', user.username);
       loadConversations();
+      setIsInitialized(true);
     }
-  }, [user]);
+  }, [user, isInitialized]);
 
   const loadConversations = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('No user, skipping conversation load');
+      return;
+    }
 
     try {
+      console.log('Loading conversations for user:', user.id);
       const conversationsJson = await AsyncStorage.getItem(`conversations_${user.id}`);
       if (conversationsJson) {
-        setConversations(JSON.parse(conversationsJson));
+        const loadedConversations = JSON.parse(conversationsJson);
+        console.log('Loaded conversations:', loadedConversations.length);
+        setConversations(loadedConversations);
+      } else {
+        console.log('No conversations found');
+        setConversations([]);
       }
     } catch (error) {
-      console.log('Error loading conversations:', error);
+      console.error('Error loading conversations:', error);
+      setConversations([]);
     }
   };
 
@@ -58,8 +71,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         `conversations_${user.id}`,
         JSON.stringify(updatedConversations)
       );
+      console.log('Conversation updated:', conversationId);
     } catch (error) {
-      console.log('Error updating conversation:', error);
+      console.error('Error updating conversation:', error);
     }
   };
 
@@ -67,32 +81,47 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
 
     try {
+      console.log('Loading messages for chat:', chatId);
       const messagesJson = await AsyncStorage.getItem(`messages_${chatId}`);
       if (messagesJson) {
         const loadedMessages = JSON.parse(messagesJson);
+        console.log('Loaded messages:', loadedMessages.length);
         setMessages(prev => ({
           ...prev,
           [chatId]: loadedMessages,
         }));
       } else {
+        console.log('No messages found for chat:', chatId);
         setMessages(prev => ({
           ...prev,
           [chatId]: [],
         }));
       }
     } catch (error) {
-      console.log('Error loading messages:', error);
+      console.error('Error loading messages:', error);
+      setMessages(prev => ({
+        ...prev,
+        [chatId]: [],
+      }));
     }
   };
 
   const sendMessage = async (receiverId?: string, text?: string, groupId?: string) => {
-    if (!user || !text) return;
+    if (!user || !text) {
+      console.log('Cannot send message: missing user or text');
+      return;
+    }
 
     try {
-      const detectedLanguage = await detectLanguage(text);
       const chatId = groupId || receiverId;
-      if (!chatId) return;
+      if (!chatId) {
+        console.log('Cannot send message: no chat ID');
+        return;
+      }
 
+      console.log('Sending message to:', chatId);
+
+      const detectedLanguage = await detectLanguage(text);
       let translatedTexts: Record<string, string> = {};
 
       if (groupId) {
@@ -126,7 +155,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       }
 
       const message: Message = {
-        id: `msg_${Date.now()}`,
+        id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         senderId: user.id,
         receiverId: groupId ? undefined : receiverId,
         groupId,
@@ -182,20 +211,30 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         `conversations_${user.id}`,
         JSON.stringify(updatedConversations)
       );
+
+      console.log('Message sent successfully');
     } catch (error) {
-      console.log('Error sending message:', error);
+      console.error('Error sending message:', error);
     }
   };
 
   const sendMediaMessage = async (receiverId?: string, media?: MediaAttachment, groupId?: string) => {
-    if (!user || !media) return;
+    if (!user || !media) {
+      console.log('Cannot send media: missing user or media');
+      return;
+    }
 
     try {
       const chatId = groupId || receiverId;
-      if (!chatId) return;
+      if (!chatId) {
+        console.log('Cannot send media: no chat ID');
+        return;
+      }
+
+      console.log('Sending media message to:', chatId);
 
       const message: Message = {
-        id: `msg_${Date.now()}`,
+        id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         senderId: user.id,
         receiverId: groupId ? undefined : receiverId,
         groupId,
@@ -255,8 +294,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         `conversations_${user.id}`,
         JSON.stringify(updatedConversations)
       );
+
+      console.log('Media message sent successfully');
     } catch (error) {
-      console.log('Error sending media message:', error);
+      console.error('Error sending media message:', error);
     }
   };
 
@@ -274,7 +315,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         JSON.stringify(updatedConversations)
       );
     } catch (error) {
-      console.log('Error marking as read:', error);
+      console.error('Error marking as read:', error);
     }
   };
 

@@ -10,7 +10,7 @@ import { SettingsProvider } from '@/contexts/SettingsContext';
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
@@ -18,13 +18,15 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (fontsLoaded) {
-      console.log('Fonts loaded, hiding splash screen');
-      SplashScreen.hideAsync();
+    if (fontsLoaded || fontError) {
+      console.log('Fonts loaded:', fontsLoaded, 'Error:', fontError);
+      SplashScreen.hideAsync().catch(err => {
+        console.error('Error hiding splash screen:', err);
+      });
     }
-  }, [fontsLoaded]);
+  }, [fontsLoaded, fontError]);
 
-  if (!fontsLoaded) {
+  if (!fontsLoaded && !fontError) {
     return null;
   }
 
