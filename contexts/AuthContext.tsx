@@ -49,6 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('Error loading auth state:', error);
     } finally {
       setIsLoading(false);
+      console.log('Auth state loading complete');
     }
   };
 
@@ -70,16 +71,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (user) {
         console.log('User found, logging in:', user);
         const token = `token_${Date.now()}`;
+        
+        // Save to AsyncStorage first
         await AsyncStorage.setItem('auth_token', token);
         await AsyncStorage.setItem('user', JSON.stringify(user));
+        console.log('Auth data saved to AsyncStorage');
         
+        // Then update state
         setAuthState({
           isAuthenticated: true,
           user,
           token,
         });
         
-        console.log('Login successful');
+        console.log('Login successful - state updated');
         return true;
       }
       
@@ -124,16 +129,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await AsyncStorage.setItem('users', JSON.stringify(users));
 
       const token = `token_${Date.now()}`;
+      
+      // Save to AsyncStorage first
       await AsyncStorage.setItem('auth_token', token);
       await AsyncStorage.setItem('user', JSON.stringify(newUser));
+      console.log('Auth data saved to AsyncStorage');
 
+      // Then update state
       setAuthState({
         isAuthenticated: true,
         user: newUser,
         token,
       });
 
-      console.log('Signup successful:', newUser);
+      console.log('Signup successful - state updated:', newUser);
       return true;
     } catch (error) {
       console.log('Signup error:', error);

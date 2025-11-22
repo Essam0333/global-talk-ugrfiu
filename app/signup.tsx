@@ -58,10 +58,8 @@ export default function SignupScreen() {
       
       if (success) {
         console.log('Signup successful, navigating to home...');
-        // Small delay to ensure state is updated
-        setTimeout(() => {
-          router.replace('/(tabs)/(home)/');
-        }, 100);
+        // Navigate immediately - the auth state is already updated
+        router.replace('/(tabs)/(home)/');
       } else {
         console.log('Signup failed - username already exists');
         setLoading(false);

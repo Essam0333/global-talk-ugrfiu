@@ -44,10 +44,8 @@ export default function LoginScreen() {
       
       if (success) {
         console.log('Login successful, navigating to home...');
-        // Small delay to ensure state is updated
-        setTimeout(() => {
-          router.replace('/(tabs)/(home)/');
-        }, 100);
+        // Navigate immediately - the auth state is already updated
+        router.replace('/(tabs)/(home)/');
       } else {
         console.log('Login failed');
         setLoading(false);
