@@ -11,7 +11,7 @@ import {
   Platform,
   useColorScheme,
 } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
 import { colors } from '@/styles/commonStyles';
@@ -20,7 +20,6 @@ import { IconSymbol } from '@/components/IconSymbol';
 export default function LoginScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const { language } = useLocalSearchParams();
   const { login } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -43,14 +42,15 @@ export default function LoginScreen() {
       const success = await login(username, password);
       console.log('Login result:', success);
       
-      setLoading(false);
-
       if (success) {
         console.log('Login successful, navigating to home...');
-        // Use replace to prevent going back to login
-        router.replace('/(tabs)/(home)/');
+        // Small delay to ensure state is updated
+        setTimeout(() => {
+          router.replace('/(tabs)/(home)/');
+        }, 100);
       } else {
         console.log('Login failed');
+        setLoading(false);
         Alert.alert('Error', 'Invalid username or password');
       }
     } catch (error) {
@@ -62,10 +62,7 @@ export default function LoginScreen() {
 
   const handleSignup = () => {
     console.log('Navigating to signup');
-    router.push({
-      pathname: '/signup',
-      params: { language: language as string },
-    });
+    router.push('/signup');
   };
 
   return (

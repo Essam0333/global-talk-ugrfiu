@@ -56,14 +56,15 @@ export default function SignupScreen() {
       const success = await signup(username, password, displayName, language as string || 'en');
       console.log('Signup result:', success);
       
-      setLoading(false);
-
       if (success) {
         console.log('Signup successful, navigating to home...');
-        // Use replace to prevent going back to signup
-        router.replace('/(tabs)/(home)/');
+        // Small delay to ensure state is updated
+        setTimeout(() => {
+          router.replace('/(tabs)/(home)/');
+        }, 100);
       } else {
         console.log('Signup failed - username already exists');
+        setLoading(false);
         Alert.alert('Error', 'Username already exists. Please choose another one.');
       }
     } catch (error) {
