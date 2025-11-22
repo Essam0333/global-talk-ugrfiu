@@ -27,23 +27,41 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
+    console.log('Login button pressed');
+    console.log('Username:', username);
+    console.log('Password length:', password.length);
+    
     if (!username || !password) {
       Alert.alert('Error', 'Please enter username and password');
       return;
     }
 
     setLoading(true);
-    const success = await login(username, password);
-    setLoading(false);
+    console.log('Calling login function...');
+    
+    try {
+      const success = await login(username, password);
+      console.log('Login result:', success);
+      
+      setLoading(false);
 
-    if (success) {
-      router.replace('/(tabs)/(home)/');
-    } else {
-      Alert.alert('Error', 'Invalid username or password');
+      if (success) {
+        console.log('Login successful, navigating to home...');
+        // Use replace to prevent going back to login
+        router.replace('/(tabs)/(home)/');
+      } else {
+        console.log('Login failed');
+        Alert.alert('Error', 'Invalid username or password');
+      }
+    } catch (error) {
+      console.log('Login error caught:', error);
+      setLoading(false);
+      Alert.alert('Error', 'An error occurred during login');
     }
   };
 
   const handleSignup = () => {
+    console.log('Navigating to signup');
     router.push({
       pathname: '/signup',
       params: { language: language as string },
@@ -95,6 +113,7 @@ export default function LoginScreen() {
                 onChangeText={setUsername}
                 autoCapitalize="none"
                 autoCorrect={false}
+                editable={!loading}
               />
             </View>
           </View>
@@ -124,17 +143,18 @@ export default function LoginScreen() {
                 onChangeText={setPassword}
                 secureTextEntry
                 autoCapitalize="none"
+                editable={!loading}
               />
             </View>
           </View>
 
           <TouchableOpacity
-            style={styles.loginButton}
+            style={[styles.loginButton, loading && styles.loginButtonDisabled]}
             onPress={handleLogin}
             disabled={loading}
           >
             <LinearGradient
-              colors={[colors.primary, colors.secondary]}
+              colors={loading ? [colors.textSecondary, colors.textSecondary] : [colors.primary, colors.secondary]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.loginButtonGradient}
@@ -149,7 +169,7 @@ export default function LoginScreen() {
             <Text style={[styles.signupText, { color: colors.textSecondary }]}>
               Don&apos;t have an account?{' '}
             </Text>
-            <TouchableOpacity onPress={handleSignup}>
+            <TouchableOpacity onPress={handleSignup} disabled={loading}>
               <Text style={[styles.signupLink, { color: colors.primary }]}>
                 Sign Up
               </Text>
@@ -233,6 +253,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginTop: 8,
     boxShadow: '0px 4px 16px rgba(37, 99, 235, 0.3)',
+  },
+  loginButtonDisabled: {
+    opacity: 0.6,
   },
   loginButtonGradient: {
     paddingVertical: 16,

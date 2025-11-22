@@ -8,6 +8,7 @@ interface AuthContextType extends AuthState {
   signup: (username: string, password: string, displayName: string, language: string) => Promise<boolean>;
   logout: () => Promise<void>;
   updateUser: (user: Partial<User>) => Promise<void>;
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -18,6 +19,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user: null,
     token: null,
   });
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     loadAuthState();
@@ -25,24 +27,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loadAuthState = async () => {
     try {
+      console.log('Loading auth state...');
       const token = await AsyncStorage.getItem('auth_token');
       const userJson = await AsyncStorage.getItem('user');
       
+      console.log('Token:', token);
+      console.log('User JSON:', userJson);
+      
       if (token && userJson) {
         const user = JSON.parse(userJson);
+        console.log('User loaded:', user);
         setAuthState({
           isAuthenticated: true,
           user,
           token,
         });
+      } else {
+        console.log('No auth data found');
       }
     } catch (error) {
       console.log('Error loading auth state:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
+      console.log('Login attempt:', username);
+      
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 500));
 
@@ -50,9 +63,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const usersJson = await AsyncStorage.getItem('users');
       const users = usersJson ? JSON.parse(usersJson) : [];
       
+      console.log('Users in storage:', users.length);
+      
       const user = users.find((u: any) => u.username === username && u.password === password);
       
       if (user) {
+        console.log('User found, logging in:', user);
         const token = `token_${Date.now()}`;
         await AsyncStorage.setItem('auth_token', token);
         await AsyncStorage.setItem('user', JSON.stringify(user));
@@ -63,9 +79,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           token,
         });
         
+        console.log('Login successful');
         return true;
       }
       
+      console.log('User not found or password incorrect');
       return false;
     } catch (error) {
       console.log('Login error:', error);
@@ -80,6 +98,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     language: string
   ): Promise<boolean> => {
     try {
+      console.log('Signup attempt:', username);
+      
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 500));
 
@@ -88,6 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const users = usersJson ? JSON.parse(usersJson) : [];
       
       if (users.find((u: any) => u.username === username)) {
+        console.log('Username already exists');
         return false;
       }
 
@@ -112,6 +133,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         token,
       });
 
+      console.log('Signup successful:', newUser);
       return true;
     } catch (error) {
       console.log('Signup error:', error);
@@ -121,6 +143,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
+      console.log('Logging out...');
       await AsyncStorage.removeItem('auth_token');
       await AsyncStorage.removeItem('user');
       
@@ -129,6 +152,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user: null,
         token: null,
       });
+      
+      console.log('Logout successful');
     } catch (error) {
       console.log('Logout error:', error);
     }
@@ -138,6 +163,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!authState.user) return;
 
     try {
+      console.log('Updating user:', updates);
       const updatedUser = { ...authState.user, ...updates };
       await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
       
@@ -155,13 +181,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         users[userIndex] = { ...users[userIndex], ...updates };
         await AsyncStorage.setItem('users', JSON.stringify(users));
       }
+      
+      console.log('User updated successfully');
     } catch (error) {
       console.log('Update user error:', error);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ ...authState, login, signup, logout, updateUser }}>
+    <AuthContext.Provider value={{ ...authState, login, signup, logout, updateUser, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

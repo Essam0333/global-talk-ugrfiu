@@ -9,15 +9,14 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   useColorScheme,
+  ScrollView,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
-import { getLanguageName } from '@/utils/languages';
 
 export default function SignupScreen() {
   const colorScheme = useColorScheme();
@@ -25,13 +24,17 @@ export default function SignupScreen() {
   const { language } = useLocalSearchParams();
   const { signup } = useAuth();
   const [username, setUsername] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSignup = async () => {
-    if (!username || !password || !displayName) {
+    console.log('Signup button pressed');
+    console.log('Username:', username);
+    console.log('Display name:', displayName);
+    
+    if (!username || !displayName || !password || !confirmPassword) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
@@ -47,14 +50,32 @@ export default function SignupScreen() {
     }
 
     setLoading(true);
-    const success = await signup(username, password, displayName, language as string || 'en');
-    setLoading(false);
+    console.log('Calling signup function...');
+    
+    try {
+      const success = await signup(username, password, displayName, language as string || 'en');
+      console.log('Signup result:', success);
+      
+      setLoading(false);
 
-    if (success) {
-      router.replace('/(tabs)/(home)/');
-    } else {
-      Alert.alert('Error', 'Username already exists');
+      if (success) {
+        console.log('Signup successful, navigating to home...');
+        // Use replace to prevent going back to signup
+        router.replace('/(tabs)/(home)/');
+      } else {
+        console.log('Signup failed - username already exists');
+        Alert.alert('Error', 'Username already exists. Please choose another one.');
+      }
+    } catch (error) {
+      console.log('Signup error caught:', error);
+      setLoading(false);
+      Alert.alert('Error', 'An error occurred during signup');
     }
+  };
+
+  const handleLogin = () => {
+    console.log('Navigating to login');
+    router.back();
   };
 
   return (
@@ -62,7 +83,11 @@ export default function SignupScreen() {
       style={[styles.container, { backgroundColor: isDark ? colors.backgroundDark : colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <LinearGradient
           colors={isDark ? [colors.primaryDark, colors.secondaryDark] : [colors.gradientStart, colors.gradientEnd]}
           start={{ x: 0, y: 0 }}
@@ -72,175 +97,158 @@ export default function SignupScreen() {
           <View style={styles.logoCircle}>
             <Text style={styles.logoEmoji}>🌟</Text>
           </View>
-          <Text style={styles.title}>Join GlobalTalk</Text>
-          <Text style={styles.subtitle}>Start chatting across languages 🌍</Text>
+          <Text style={styles.title}>Create Account</Text>
+          <Text style={styles.subtitle}>Join GlobalTalk today! 🚀</Text>
         </LinearGradient>
 
-        <View style={styles.form}>
-          <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: isDark ? colors.textDark : colors.text }]}>
-              Display Name
-            </Text>
-            <View style={[
-              styles.inputWrapper,
-              {
-                backgroundColor: isDark ? colors.backgroundAltDark : colors.backgroundAlt,
-                borderColor: isDark ? colors.borderDark : colors.border,
-              },
-            ]}>
-              <IconSymbol
-                ios_icon_name="person.fill"
-                android_material_icon_name="person"
-                size={20}
-                color={colors.textSecondary}
-              />
-              <TextInput
-                style={[styles.input, { color: isDark ? colors.textDark : colors.text }]}
-                placeholder="Your name"
-                placeholderTextColor={colors.textSecondary}
-                value={displayName}
-                onChangeText={setDisplayName}
-                autoCapitalize="words"
-              />
-            </View>
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: isDark ? colors.textDark : colors.text }]}>
-              Username
-            </Text>
-            <View style={[
-              styles.inputWrapper,
-              {
-                backgroundColor: isDark ? colors.backgroundAltDark : colors.backgroundAlt,
-                borderColor: isDark ? colors.borderDark : colors.border,
-              },
-            ]}>
-              <IconSymbol
-                ios_icon_name="at"
-                android_material_icon_name="alternate_email"
-                size={20}
-                color={colors.textSecondary}
-              />
-              <TextInput
-                style={[styles.input, { color: isDark ? colors.textDark : colors.text }]}
-                placeholder="Choose a username"
-                placeholderTextColor={colors.textSecondary}
-                value={username}
-                onChangeText={setUsername}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: isDark ? colors.textDark : colors.text }]}>
-              Password
-            </Text>
-            <View style={[
-              styles.inputWrapper,
-              {
-                backgroundColor: isDark ? colors.backgroundAltDark : colors.backgroundAlt,
-                borderColor: isDark ? colors.borderDark : colors.border,
-              },
-            ]}>
-              <IconSymbol
-                ios_icon_name="lock.fill"
-                android_material_icon_name="lock"
-                size={20}
-                color={colors.textSecondary}
-              />
-              <TextInput
-                style={[styles.input, { color: isDark ? colors.textDark : colors.text }]}
-                placeholder="At least 6 characters"
-                placeholderTextColor={colors.textSecondary}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                autoCapitalize="none"
-              />
-            </View>
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: isDark ? colors.textDark : colors.text }]}>
-              Confirm Password
-            </Text>
-            <View style={[
-              styles.inputWrapper,
-              {
-                backgroundColor: isDark ? colors.backgroundAltDark : colors.backgroundAlt,
-                borderColor: isDark ? colors.borderDark : colors.border,
-              },
-            ]}>
-              <IconSymbol
-                ios_icon_name="lock.fill"
-                android_material_icon_name="lock"
-                size={20}
-                color={colors.textSecondary}
-              />
-              <TextInput
-                style={[styles.input, { color: isDark ? colors.textDark : colors.text }]}
-                placeholder="Re-enter password"
-                placeholderTextColor={colors.textSecondary}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry
-                autoCapitalize="none"
-              />
-            </View>
-          </View>
-
-          <View style={[
-            styles.languageInfo,
-            {
-              backgroundColor: isDark ? colors.backgroundAltDark : colors.backgroundAlt,
-              borderColor: colors.primary,
-            },
-          ]}>
-            <IconSymbol
-              ios_icon_name="globe"
-              android_material_icon_name="language"
-              size={24}
-              color={colors.primary}
-            />
-            <View style={styles.languageTextContainer}>
-              <Text style={[styles.languageLabel, { color: colors.textSecondary }]}>
-                Preferred Language
+        <View style={styles.content}>
+          <View style={styles.form}>
+            <View style={styles.inputContainer}>
+              <Text style={[styles.label, { color: isDark ? colors.textDark : colors.text }]}>
+                Username
               </Text>
-              <Text style={[styles.languageValue, { color: isDark ? colors.textDark : colors.text }]}>
-                {getLanguageName(language as string || 'en')}
-              </Text>
+              <View style={[
+                styles.inputWrapper,
+                {
+                  backgroundColor: isDark ? colors.backgroundAltDark : colors.backgroundAlt,
+                  borderColor: isDark ? colors.borderDark : colors.border,
+                },
+              ]}>
+                <IconSymbol
+                  ios_icon_name="at"
+                  android_material_icon_name="alternate_email"
+                  size={20}
+                  color={colors.textSecondary}
+                />
+                <TextInput
+                  style={[styles.input, { color: isDark ? colors.textDark : colors.text }]}
+                  placeholder="Choose a username"
+                  placeholderTextColor={colors.textSecondary}
+                  value={username}
+                  onChangeText={setUsername}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!loading}
+                />
+              </View>
             </View>
-          </View>
 
-          <TouchableOpacity
-            style={styles.signupButton}
-            onPress={handleSignup}
-            disabled={loading}
-          >
-            <LinearGradient
-              colors={[colors.primary, colors.secondary]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.signupButtonGradient}
+            <View style={styles.inputContainer}>
+              <Text style={[styles.label, { color: isDark ? colors.textDark : colors.text }]}>
+                Display Name
+              </Text>
+              <View style={[
+                styles.inputWrapper,
+                {
+                  backgroundColor: isDark ? colors.backgroundAltDark : colors.backgroundAlt,
+                  borderColor: isDark ? colors.borderDark : colors.border,
+                },
+              ]}>
+                <IconSymbol
+                  ios_icon_name="person.fill"
+                  android_material_icon_name="person"
+                  size={20}
+                  color={colors.textSecondary}
+                />
+                <TextInput
+                  style={[styles.input, { color: isDark ? colors.textDark : colors.text }]}
+                  placeholder="Your display name"
+                  placeholderTextColor={colors.textSecondary}
+                  value={displayName}
+                  onChangeText={setDisplayName}
+                  autoCorrect={false}
+                  editable={!loading}
+                />
+              </View>
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={[styles.label, { color: isDark ? colors.textDark : colors.text }]}>
+                Password
+              </Text>
+              <View style={[
+                styles.inputWrapper,
+                {
+                  backgroundColor: isDark ? colors.backgroundAltDark : colors.backgroundAlt,
+                  borderColor: isDark ? colors.borderDark : colors.border,
+                },
+              ]}>
+                <IconSymbol
+                  ios_icon_name="lock.fill"
+                  android_material_icon_name="lock"
+                  size={20}
+                  color={colors.textSecondary}
+                />
+                <TextInput
+                  style={[styles.input, { color: isDark ? colors.textDark : colors.text }]}
+                  placeholder="Create a password"
+                  placeholderTextColor={colors.textSecondary}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  editable={!loading}
+                />
+              </View>
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={[styles.label, { color: isDark ? colors.textDark : colors.text }]}>
+                Confirm Password
+              </Text>
+              <View style={[
+                styles.inputWrapper,
+                {
+                  backgroundColor: isDark ? colors.backgroundAltDark : colors.backgroundAlt,
+                  borderColor: isDark ? colors.borderDark : colors.border,
+                },
+              ]}>
+                <IconSymbol
+                  ios_icon_name="lock.fill"
+                  android_material_icon_name="lock"
+                  size={20}
+                  color={colors.textSecondary}
+                />
+                <TextInput
+                  style={[styles.input, { color: isDark ? colors.textDark : colors.text }]}
+                  placeholder="Confirm your password"
+                  placeholderTextColor={colors.textSecondary}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  editable={!loading}
+                />
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.signupButton, loading && styles.signupButtonDisabled]}
+              onPress={handleSignup}
+              disabled={loading}
             >
-              <Text style={styles.signupButtonText}>
-                {loading ? 'Creating Account...' : 'Sign Up 🎉'}
-              </Text>
-            </LinearGradient>
-          </TouchableOpacity>
-
-          <View style={styles.loginContainer}>
-            <Text style={[styles.loginText, { color: colors.textSecondary }]}>
-              Already have an account?{' '}
-            </Text>
-            <TouchableOpacity onPress={() => router.back()}>
-              <Text style={[styles.loginLink, { color: colors.primary }]}>
-                Sign In
-              </Text>
+              <LinearGradient
+                colors={loading ? [colors.textSecondary, colors.textSecondary] : [colors.primary, colors.secondary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.signupButtonGradient}
+              >
+                <Text style={styles.signupButtonText}>
+                  {loading ? 'Creating Account...' : 'Sign Up'}
+                </Text>
+              </LinearGradient>
             </TouchableOpacity>
+
+            <View style={styles.loginContainer}>
+              <Text style={[styles.loginText, { color: colors.textSecondary }]}>
+                Already have an account?{' '}
+              </Text>
+              <TouchableOpacity onPress={handleLogin} disabled={loading}>
+                <Text style={[styles.loginLink, { color: colors.primary }]}>
+                  Sign In
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </ScrollView>
@@ -252,9 +260,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  scrollView: {
+    flex: 1,
+  },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: 40,
   },
   header: {
     paddingTop: 80,
@@ -288,12 +298,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontFamily: 'Inter_400Regular',
   },
-  form: {
+  content: {
+    flex: 1,
     paddingHorizontal: 20,
     paddingTop: 32,
+    paddingBottom: 40,
+  },
+  form: {
+    width: '100%',
   },
   inputContainer: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   label: {
     fontSize: 16,
@@ -315,32 +330,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter_400Regular',
   },
-  languageInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 2,
-    marginBottom: 24,
-  },
-  languageTextContainer: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  languageLabel: {
-    fontSize: 14,
-    marginBottom: 2,
-    fontFamily: 'Inter_400Regular',
-  },
-  languageValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
-  },
   signupButton: {
     borderRadius: 12,
     overflow: 'hidden',
+    marginTop: 8,
     boxShadow: '0px 4px 16px rgba(37, 99, 235, 0.3)',
+  },
+  signupButtonDisabled: {
+    opacity: 0.6,
   },
   signupButtonGradient: {
     paddingVertical: 16,

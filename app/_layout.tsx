@@ -19,6 +19,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (fontsLoaded) {
+      console.log('Fonts loaded, hiding splash screen');
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded]);
@@ -37,14 +38,15 @@ export default function RootLayout() {
               animation: 'slide_from_right',
             }}
           >
-            <Stack.Screen name="welcome" />
-            <Stack.Screen name="login" />
-            <Stack.Screen name="signup" />
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="chat/[id]" />
-            <Stack.Screen name="group/create" />
-            <Stack.Screen name="starred" />
-            <Stack.Screen name="privacy" />
+            <Stack.Screen name="index" options={{ headerShown: false }} />
+            <Stack.Screen name="welcome" options={{ headerShown: false }} />
+            <Stack.Screen name="login" options={{ headerShown: false }} />
+            <Stack.Screen name="signup" options={{ headerShown: false }} />
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="chat/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="group/create" options={{ headerShown: false }} />
+            <Stack.Screen name="starred" options={{ headerShown: false }} />
+            <Stack.Screen name="privacy" options={{ headerShown: false }} />
           </Stack>
         </ChatProvider>
       </SettingsProvider>
