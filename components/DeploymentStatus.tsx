@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import * as Application from 'expo-application';
 import * as Updates from 'expo-updates';
 import * as Device from 'expo-device';
@@ -18,11 +18,6 @@ interface DeploymentInfo {
     platform: string;
     osVersion: string;
     deviceModel: string;
-  };
-  buildInfo: {
-    isUpdateAvailable: boolean;
-    isUpdatePending: boolean;
-    lastUpdateCheck: string;
   };
 }
 
@@ -45,11 +40,6 @@ export const DeploymentStatus: React.FC = () => {
         platform: Device.osName || 'Unknown',
         osVersion: Device.osVersion || 'Unknown',
         deviceModel: Device.modelName || 'Unknown',
-      },
-      buildInfo: {
-        isUpdateAvailable: Updates.isUpdateAvailable || false,
-        isUpdatePending: Updates.isUpdatePending || false,
-        lastUpdateCheck: new Date().toISOString(),
       },
     };
 
@@ -125,18 +115,6 @@ export const DeploymentStatus: React.FC = () => {
             <InfoRow label="Platform" value={deploymentInfo.deviceInfo.platform} />
             <InfoRow label="OS Version" value={deploymentInfo.deviceInfo.osVersion} />
             <InfoRow label="Device Model" value={deploymentInfo.deviceInfo.deviceModel} />
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Update Status</Text>
-            <InfoRow
-              label="Update Available"
-              value={deploymentInfo.buildInfo.isUpdateAvailable ? 'Yes' : 'No'}
-            />
-            <InfoRow
-              label="Update Pending"
-              value={deploymentInfo.buildInfo.isUpdatePending ? 'Yes' : 'No'}
-            />
           </View>
 
           {__DEV__ && (

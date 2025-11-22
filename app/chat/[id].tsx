@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -67,6 +67,73 @@ export default function ChatScreen() {
 
   const isGroup = (id as string)?.startsWith('group_');
 
+  const checkIfBlocked = useCallback(async () => {
+    if (!user || !id) return;
+
+    try {
+      const blockedJson = await AsyncStorage.getItem(`blocked_${user.id}`);
+      if (blockedJson) {
+        const blocked = JSON.parse(blockedJson);
+        const isUserBlocked = blocked.some((b: any) => b.id === id);
+        setIsBlocked(isUserBlocked);
+      }
+    } catch (error) {
+      console.log('Error checking blocked status:', error);
+    }
+  }, [user, id]);
+
+  const loadOtherUser = useCallback(async () => {
+    try {
+      const usersJson = await AsyncStorage.getItem('users');
+      if (usersJson) {
+        const users = JSON.parse(usersJson);
+        const foundUser = users.find((u: User) => u.id === id);
+        setOtherUser(foundUser);
+      }
+    } catch (error) {
+      console.log('Error loading user:', error);
+    }
+  }, [id]);
+
+  const loadGroup = useCallback(async () => {
+    try {
+      const groupsJson = await AsyncStorage.getItem('groups');
+      if (groupsJson) {
+        const groups = JSON.parse(groupsJson);
+        const foundGroup = groups.find((g: Group) => g.id === id);
+        setGroup(foundGroup);
+      }
+    } catch (error) {
+      console.log('Error loading group:', error);
+    }
+  }, [id]);
+
+  const loadReactions = useCallback(async () => {
+    try {
+      const reactionsJson = await AsyncStorage.getItem(`reactions_${id}`);
+      if (reactionsJson) {
+        setMessageReactions(JSON.parse(reactionsJson));
+      }
+    } catch (error) {
+      console.log('Error loading reactions:', error);
+    }
+  }, [id]);
+
+  const loadStarredMessages = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const starredJson = await AsyncStorage.getItem(`starred_${user.id}`);
+      if (starredJson) {
+        const starred: StarredMessage[] = JSON.parse(starredJson);
+        const ids = new Set(starred.map(s => s.messageId));
+        setStarredMessageIds(ids);
+      }
+    } catch (error) {
+      console.log('Error loading starred messages:', error);
+    }
+  }, [user]);
+
   useEffect(() => {
     if (id) {
       loadMessages(id as string);
@@ -80,74 +147,7 @@ export default function ChatScreen() {
       loadReactions();
       loadStarredMessages();
     }
-  }, [id]);
-
-  const checkIfBlocked = async () => {
-    if (!user || !id) return;
-
-    try {
-      const blockedJson = await AsyncStorage.getItem(`blocked_${user.id}`);
-      if (blockedJson) {
-        const blocked = JSON.parse(blockedJson);
-        const isUserBlocked = blocked.some((b: any) => b.id === id);
-        setIsBlocked(isUserBlocked);
-      }
-    } catch (error) {
-      console.log('Error checking blocked status:', error);
-    }
-  };
-
-  const loadOtherUser = async () => {
-    try {
-      const usersJson = await AsyncStorage.getItem('users');
-      if (usersJson) {
-        const users = JSON.parse(usersJson);
-        const foundUser = users.find((u: User) => u.id === id);
-        setOtherUser(foundUser);
-      }
-    } catch (error) {
-      console.log('Error loading user:', error);
-    }
-  };
-
-  const loadGroup = async () => {
-    try {
-      const groupsJson = await AsyncStorage.getItem('groups');
-      if (groupsJson) {
-        const groups = JSON.parse(groupsJson);
-        const foundGroup = groups.find((g: Group) => g.id === id);
-        setGroup(foundGroup);
-      }
-    } catch (error) {
-      console.log('Error loading group:', error);
-    }
-  };
-
-  const loadReactions = async () => {
-    try {
-      const reactionsJson = await AsyncStorage.getItem(`reactions_${id}`);
-      if (reactionsJson) {
-        setMessageReactions(JSON.parse(reactionsJson));
-      }
-    } catch (error) {
-      console.log('Error loading reactions:', error);
-    }
-  };
-
-  const loadStarredMessages = async () => {
-    if (!user) return;
-
-    try {
-      const starredJson = await AsyncStorage.getItem(`starred_${user.id}`);
-      if (starredJson) {
-        const starred: StarredMessage[] = JSON.parse(starredJson);
-        const ids = new Set(starred.map(s => s.messageId));
-        setStarredMessageIds(ids);
-      }
-    } catch (error) {
-      console.log('Error loading starred messages:', error);
-    }
-  };
+  }, [id, isGroup, loadMessages, markAsRead, loadGroup, loadOtherUser, checkIfBlocked, loadReactions, loadStarredMessages]);
 
   const saveReactions = async (reactions: Record<string, Record<string, number>>) => {
     try {

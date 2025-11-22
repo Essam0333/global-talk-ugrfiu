@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -25,12 +25,7 @@ export default function StarredMessagesScreen() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [sortBy, setSortBy] = useState<'date' | 'chat'>('date');
 
-  useEffect(() => {
-    loadStarredMessages();
-    loadContacts();
-  }, []);
-
-  const loadStarredMessages = async () => {
+  const loadStarredMessages = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -57,7 +52,7 @@ export default function StarredMessagesScreen() {
     } catch (error) {
       console.log('Error loading starred messages:', error);
     }
-  };
+  }, [user]);
 
   const loadContacts = async () => {
     try {
@@ -70,6 +65,11 @@ export default function StarredMessagesScreen() {
       console.log('Error loading contacts:', error);
     }
   };
+
+  useEffect(() => {
+    loadStarredMessages();
+    loadContacts();
+  }, [loadStarredMessages]);
 
   const getChatName = (chatId: string) => {
     const user = users.find(u => u.id === chatId);

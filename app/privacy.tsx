@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -35,12 +35,7 @@ export default function PrivacyScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [allUsers, setAllUsers] = useState<User[]>([]);
 
-  useEffect(() => {
-    loadBlockedUsers();
-    loadAllUsers();
-  }, []);
-
-  const loadBlockedUsers = async () => {
+  const loadBlockedUsers = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -51,9 +46,9 @@ export default function PrivacyScreen() {
     } catch (error) {
       console.log('Error loading blocked users:', error);
     }
-  };
+  }, [user]);
 
-  const loadAllUsers = async () => {
+  const loadAllUsers = useCallback(async () => {
     try {
       const usersJson = await AsyncStorage.getItem('users');
       if (usersJson) {
@@ -63,7 +58,12 @@ export default function PrivacyScreen() {
     } catch (error) {
       console.log('Error loading users:', error);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    loadBlockedUsers();
+    loadAllUsers();
+  }, [loadBlockedUsers, loadAllUsers]);
 
   const handleBlockUser = async (targetUser: User) => {
     if (!user) return;
