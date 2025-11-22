@@ -9,6 +9,7 @@ import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol.ios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { User } from "@/types";
+import Button from "@/components/button";
 
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
@@ -144,7 +145,18 @@ export default function HomeScreen() {
               );
             })
           )}
+          <View style={styles.bottomPadding} />
         </ScrollView>
+
+        <View style={styles.bottomButtonContainer}>
+          <Button
+            onPress={() => router.push('/(tabs)/contacts')}
+            style={[styles.bottomButton, { backgroundColor: colors.primary }]}
+            textStyle={styles.bottomButtonText}
+          >
+            Continue to the Chat Inspired By Veronica ❤️
+          </Button>
+        </View>
       </View>
     </>
   );
@@ -241,5 +253,28 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
+  },
+  bottomPadding: {
+    height: 100,
+  },
+  bottomButtonContainer: {
+    position: 'absolute',
+    bottom: 100,
+    left: 20,
+    right: 20,
+    paddingVertical: 12,
+    backgroundColor: 'transparent',
+  },
+  bottomButton: {
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    boxShadow: '0px 4px 20px rgba(37, 99, 235, 0.4)',
+  },
+  bottomButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'center',
   },
 });

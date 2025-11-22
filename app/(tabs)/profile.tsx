@@ -9,6 +9,7 @@ import {
   useColorScheme,
   Switch,
   Image,
+  Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,6 +18,10 @@ import { useSettings } from '@/contexts/SettingsContext';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import { getLanguageName } from '@/utils/languages';
+import { updateManager } from '@/utils/updateManager';
+import { feedbackManager } from '@/utils/feedbackManager';
+import { FeedbackModal } from '@/components/FeedbackModal';
+import { VersionInfo } from '@/components/VersionInfo';
 
 const MOOD_EMOJIS = ['😊', '😎', '🤔', '😴', '🎉', '💪', '🌟', '❤️'];
 const STATUS_OPTIONS = [
@@ -32,6 +37,8 @@ export default function ProfileScreen() {
   const { settings, updateSettings } = useSettings();
   const [selectedMood, setSelectedMood] = useState(user?.emojiStatus || '😊');
   const [selectedStatus, setSelectedStatus] = useState(user?.status?.type || 'available');
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
 
   const handleMoodChange = async (emoji: string) => {
     setSelectedMood(emoji);
@@ -51,6 +58,23 @@ export default function ProfileScreen() {
 
   const handleFontSizeChange = (size: 'small' | 'medium' | 'large') => {
     updateSettings({ fontSize: size });
+  };
+
+  const handleCheckForUpdates = async () => {
+    setIsCheckingUpdate(true);
+    try {
+      const updateInfo = await updateManager.checkForUpdates();
+      if (updateInfo.isAvailable) {
+        await updateManager.promptForUpdate(updateInfo);
+      } else {
+        Alert.alert('No Updates', 'You are running the latest version of GlobalTalk.');
+      }
+    } catch (error) {
+      console.error('Error checking for updates:', error);
+      Alert.alert('Error', 'Failed to check for updates. Please try again later.');
+    } finally {
+      setIsCheckingUpdate(false);
+    }
   };
 
   if (!user) return null;
@@ -454,6 +478,173 @@ export default function ProfileScreen() {
 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: isDark ? colors.textDark : colors.text }]}>
+            Testing & Feedback
+          </Text>
+
+          <TouchableOpacity
+            style={[
+              styles.settingCard,
+              {
+                backgroundColor: isDark ? colors.cardDark : colors.card,
+              },
+            ]}
+            onPress={() => router.push('/testing-guide')}
+          >
+            <View style={styles.settingIcon}>
+              <LinearGradient
+                colors={['#10B981', '#059669']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.settingIconGradient}
+              >
+                <IconSymbol
+                  ios_icon_name="book.fill"
+                  android_material_icon_name="menu_book"
+                  size={20}
+                  color="#FFFFFF"
+                />
+              </LinearGradient>
+            </View>
+            <View style={styles.settingInfo}>
+              <Text style={[styles.settingLabel, { color: isDark ? colors.textDark : colors.text }]}>
+                Testing Guide
+              </Text>
+              <Text style={[styles.settingValue, { color: colors.textSecondary }]}>
+                How to test and report issues
+              </Text>
+            </View>
+            <IconSymbol
+              ios_icon_name="chevron.right"
+              android_material_icon_name="chevron_right"
+              size={20}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.settingCard,
+              {
+                backgroundColor: isDark ? colors.cardDark : colors.card,
+              },
+            ]}
+            onPress={() => router.push('/deployment-info')}
+          >
+            <View style={styles.settingIcon}>
+              <LinearGradient
+                colors={['#3B82F6', '#2563EB']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.settingIconGradient}
+              >
+                <IconSymbol
+                  ios_icon_name="info.circle.fill"
+                  android_material_icon_name="info"
+                  size={20}
+                  color="#FFFFFF"
+                />
+              </LinearGradient>
+            </View>
+            <View style={styles.settingInfo}>
+              <Text style={[styles.settingLabel, { color: isDark ? colors.textDark : colors.text }]}>
+                Deployment Info
+              </Text>
+              <Text style={[styles.settingValue, { color: colors.textSecondary }]}>
+                View build and deployment details
+              </Text>
+            </View>
+            <IconSymbol
+              ios_icon_name="chevron.right"
+              android_material_icon_name="chevron_right"
+              size={20}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.settingCard,
+              {
+                backgroundColor: isDark ? colors.cardDark : colors.card,
+              },
+            ]}
+            onPress={() => setShowFeedbackModal(true)}
+          >
+            <View style={styles.settingIcon}>
+              <LinearGradient
+                colors={['#8B5CF6', '#7C3AED']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.settingIconGradient}
+              >
+                <IconSymbol
+                  ios_icon_name="bubble.left.and.bubble.right.fill"
+                  android_material_icon_name="feedback"
+                  size={20}
+                  color="#FFFFFF"
+                />
+              </LinearGradient>
+            </View>
+            <View style={styles.settingInfo}>
+              <Text style={[styles.settingLabel, { color: isDark ? colors.textDark : colors.text }]}>
+                Send Feedback
+              </Text>
+              <Text style={[styles.settingValue, { color: colors.textSecondary }]}>
+                Report bugs or suggest features
+              </Text>
+            </View>
+            <IconSymbol
+              ios_icon_name="chevron.right"
+              android_material_icon_name="chevron_right"
+              size={20}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.settingCard,
+              {
+                backgroundColor: isDark ? colors.cardDark : colors.card,
+              },
+            ]}
+            onPress={handleCheckForUpdates}
+            disabled={isCheckingUpdate}
+          >
+            <View style={styles.settingIcon}>
+              <LinearGradient
+                colors={['#F59E0B', '#D97706']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.settingIconGradient}
+              >
+                <IconSymbol
+                  ios_icon_name="arrow.down.circle.fill"
+                  android_material_icon_name="system_update"
+                  size={20}
+                  color="#FFFFFF"
+                />
+              </LinearGradient>
+            </View>
+            <View style={styles.settingInfo}>
+              <Text style={[styles.settingLabel, { color: isDark ? colors.textDark : colors.text }]}>
+                Check for Updates
+              </Text>
+              <Text style={[styles.settingValue, { color: colors.textSecondary }]}>
+                {isCheckingUpdate ? 'Checking...' : 'Get the latest version'}
+              </Text>
+            </View>
+            <IconSymbol
+              ios_icon_name="chevron.right"
+              android_material_icon_name="chevron_right"
+              size={20}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: isDark ? colors.textDark : colors.text }]}>
             About
           </Text>
 
@@ -478,14 +669,18 @@ export default function ProfileScreen() {
             <Text style={[styles.infoText, { color: colors.textSecondary }]}>
               Chat across languages seamlessly with automatic translation. Connect with people worldwide! 🌟
             </Text>
-            <Text style={[styles.infoVersion, { color: colors.textSecondary }]}>
-              Version 1.0.0
-            </Text>
+            
+            <VersionInfo />
           </View>
         </View>
 
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      <FeedbackModal
+        visible={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
+      />
     </View>
   );
 }
@@ -727,10 +922,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     marginBottom: 12,
-    fontFamily: 'Inter_400Regular',
-  },
-  infoVersion: {
-    fontSize: 13,
     fontFamily: 'Inter_400Regular',
   },
 });

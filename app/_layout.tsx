@@ -7,6 +7,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { ChatProvider } from '@/contexts/ChatContext';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import { View, ActivityIndicator } from 'react-native';
+import { UpdateChecker } from '@/components/UpdateChecker';
 
 SplashScreen.preventAutoHideAsync().catch(() => {
   console.log('SplashScreen.preventAutoHideAsync failed');
@@ -64,7 +65,10 @@ export default function RootLayout() {
             <Stack.Screen name="group/create" options={{ headerShown: false }} />
             <Stack.Screen name="starred" options={{ headerShown: false }} />
             <Stack.Screen name="privacy" options={{ headerShown: false }} />
+            <Stack.Screen name="testing-guide" options={{ headerShown: false }} />
+            <Stack.Screen name="deployment-info" options={{ headerShown: false }} />
           </Stack>
+          <UpdateChecker />
         </ChatProvider>
       </SettingsProvider>
     </AuthProvider>

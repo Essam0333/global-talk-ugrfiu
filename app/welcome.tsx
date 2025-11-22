@@ -5,7 +5,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
   useColorScheme,
 } from 'react-native';
 import { router } from 'expo-router';
@@ -50,21 +49,6 @@ export default function WelcomeScreen() {
       </TouchableOpacity>
 
       <View style={styles.content}>
-        <LinearGradient
-          colors={isDark ? [colors.primaryDark, colors.secondaryDark] : [colors.gradientStart, colors.gradientEnd]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.logoContainer}
-        >
-          <View style={styles.logoWrapper}>
-            <Image
-              source={require('@/assets/images/1fc748b5-afe0-451c-a430-121058317495.png')}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-          </View>
-        </LinearGradient>
-
         <Text style={[styles.appName, { color: isDark ? colors.textDark : colors.text }]}>
           GlobalTalk
         </Text>
@@ -136,6 +120,12 @@ export default function WelcomeScreen() {
             />
           </LinearGradient>
         </TouchableOpacity>
+
+        <View style={styles.inspirationContainer}>
+          <Text style={[styles.inspirationText, { color: colors.textSecondary }]}>
+            Inspired By Veronica ❤️
+          </Text>
+        </View>
       </View>
     </View>
   );
@@ -174,28 +164,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 20,
-  },
-  logoContainer: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-    boxShadow: '0px 8px 32px rgba(37, 99, 235, 0.3)',
-  },
-  logoWrapper: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  logo: {
-    width: 100,
-    height: 100,
+    paddingTop: 100,
   },
   appName: {
     fontSize: 32,
@@ -268,6 +237,7 @@ const styles = StyleSheet.create({
   continueButton: {
     width: '100%',
     maxWidth: 400,
+    marginBottom: 24,
   },
   continueButtonGradient: {
     flexDirection: 'row',
@@ -284,5 +254,15 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     fontFamily: 'Inter_600SemiBold',
+  },
+  inspirationContainer: {
+    marginTop: 16,
+    paddingVertical: 12,
+  },
+  inspirationText: {
+    fontSize: 14,
+    fontWeight: '500',
+    fontFamily: 'Inter_500Medium',
+    textAlign: 'center',
   },
 });

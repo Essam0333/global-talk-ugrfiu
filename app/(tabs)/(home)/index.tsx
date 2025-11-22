@@ -11,6 +11,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { User, Group, Conversation } from "@/types";
 import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
+import Button from "@/components/button";
 
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
@@ -473,7 +474,18 @@ export default function HomeScreen() {
                 );
               })
             )}
+            <View style={styles.bottomPadding} />
           </ScrollView>
+        </View>
+
+        <View style={styles.bottomButtonContainer}>
+          <Button
+            onPress={() => router.push('/(tabs)/contacts')}
+            style={[styles.bottomButton, { backgroundColor: colors.primary }]}
+            textStyle={styles.bottomButtonText}
+          >
+            Continue to the Chat Inspired By Veronica ❤️
+          </Button>
         </View>
       </View>
     </GestureHandlerRootView>
@@ -724,5 +736,28 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 4,
     fontFamily: 'Inter_600SemiBold',
+  },
+  bottomPadding: {
+    height: 100,
+  },
+  bottomButtonContainer: {
+    position: 'absolute',
+    bottom: 100,
+    left: 20,
+    right: 20,
+    paddingVertical: 12,
+    backgroundColor: 'transparent',
+  },
+  bottomButton: {
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    boxShadow: '0px 4px 20px rgba(37, 99, 235, 0.4)',
+  },
+  bottomButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'center',
   },
 });
